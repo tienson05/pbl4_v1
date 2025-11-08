@@ -1,0 +1,31 @@
+{
+	"backtrace" : 0,
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : 
+		[
+			"src/Core/Protocols/NetworkLayer/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			}
+		]
+	},
+	"folder" : 
+	{
+		"name" : "QtInternalTargets"
+	},
+	"id" : "NetwrokLayerLib_autogen_timestamp_deps::@0394cefec4fc05c3f2e1",
+	"isGeneratorProvided" : true,
+	"name" : "NetwrokLayerLib_autogen_timestamp_deps",
+	"paths" : 
+	{
+		"build" : "src/Core/Protocols/NetworkLayer",
+		"source" : "src/Core/Protocols/NetworkLayer"
+	},
+	"sources" : [],
+	"type" : "UTILITY"
+}

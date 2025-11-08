@@ -1,0 +1,31 @@
+{
+	"backtrace" : 0,
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : 
+		[
+			"src/Core/Protocols/ApplicationLayer/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			}
+		]
+	},
+	"folder" : 
+	{
+		"name" : "QtInternalTargets"
+	},
+	"id" : "ApplicationLayer_autogen_timestamp_deps::@ddc0aa3b0f783f33a0b1",
+	"isGeneratorProvided" : true,
+	"name" : "ApplicationLayer_autogen_timestamp_deps",
+	"paths" : 
+	{
+		"build" : "src/Core/Protocols/ApplicationLayer",
+		"source" : "src/Core/Protocols/ApplicationLayer"
+	},
+	"sources" : [],
+	"type" : "UTILITY"
+}

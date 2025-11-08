@@ -1,0 +1,75 @@
+{
+	"backtrace" : 0,
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : 
+		[
+			"src/Core/Protocols/NetworkLayer/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			}
+		]
+	},
+	"dependencies" : 
+	[
+		{
+			"id" : "NetwrokLayerLib_autogen_timestamp_deps::@0394cefec4fc05c3f2e1"
+		}
+	],
+	"folder" : 
+	{
+		"name" : "QtInternalTargets"
+	},
+	"id" : "NetwrokLayerLib_autogen::@0394cefec4fc05c3f2e1",
+	"isGeneratorProvided" : true,
+	"name" : "NetwrokLayerLib_autogen",
+	"paths" : 
+	{
+		"build" : "src/Core/Protocols/NetworkLayer",
+		"source" : "src/Core/Protocols/NetworkLayer"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		},
+		{
+			"name" : "CMake Rules",
+			"sourceIndexes" : 
+			[
+				1,
+				2
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "build/Desktop_Qt_6_9_2-Debug/src/Core/Protocols/NetworkLayer/CMakeFiles/NetwrokLayerLib_autogen",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "build/Desktop_Qt_6_9_2-Debug/src/Core/Protocols/NetworkLayer/CMakeFiles/NetwrokLayerLib_autogen.rule",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "build/Desktop_Qt_6_9_2-Debug/src/Core/Protocols/NetworkLayer/NetwrokLayerLib_autogen/timestamp.rule",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "UTILITY"
+}

@@ -1,0 +1,38 @@
+{
+	"backtrace" : 0,
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : 
+		[
+			"src/UI/Pages/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			}
+		]
+	},
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 0,
+			"id" : "WidgetsLib::@bce7a740355b1c6c5ddc"
+		}
+	],
+	"folder" : 
+	{
+		"name" : "QtInternalTargets"
+	},
+	"id" : "PagesLib_autogen_timestamp_deps::@2b43316283d76cf61dd3",
+	"isGeneratorProvided" : true,
+	"name" : "PagesLib_autogen_timestamp_deps",
+	"paths" : 
+	{
+		"build" : "src/UI/Pages",
+		"source" : "src/UI/Pages"
+	},
+	"sources" : [],
+	"type" : "UTILITY"
+}

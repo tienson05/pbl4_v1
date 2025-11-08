@@ -1,0 +1,42 @@
+{
+	"backtrace" : 0,
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : 
+		[
+			"src/Controller/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			}
+		]
+	},
+	"dependencies" : 
+	[
+		{
+			"backtrace" : 0,
+			"id" : "CaptureLib::@b11abb149bcda137bd9d"
+		},
+		{
+			"backtrace" : 0,
+			"id" : "UILib::@e6812f907734570e2a17"
+		}
+	],
+	"folder" : 
+	{
+		"name" : "QtInternalTargets"
+	},
+	"id" : "ControllerLib_autogen_timestamp_deps::@11f1bd12b27f4837fc80",
+	"isGeneratorProvided" : true,
+	"name" : "ControllerLib_autogen_timestamp_deps",
+	"paths" : 
+	{
+		"build" : "src/Controller",
+		"source" : "src/Controller"
+	},
+	"sources" : [],
+	"type" : "UTILITY"
+}

@@ -1,0 +1,5 @@
+add_subdirectory(App/)
+add_subdirectory(Core/)
+add_subdirectory(UI/)
+add_subdirectory(Controller/)
+add_subdirectory(Common/)

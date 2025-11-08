@@ -1,0 +1,10 @@
+add_library(NetwrokLayerLib
+    ICMPParser.cpp
+    ICMPParser.hpp
+    ARPParser.cpp
+    ARPParser.hpp
+    IPv4Parser.cpp
+    IPv4Parser.hpp
+    IPv6Parser.cpp
+    IPv6Parser.hpp
+)

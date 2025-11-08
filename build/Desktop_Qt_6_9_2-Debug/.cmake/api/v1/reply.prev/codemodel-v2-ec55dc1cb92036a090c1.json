@@ -1,0 +1,601 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						16
+					],
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : "."
+				},
+				{
+					"build" : "src",
+					"childIndexes" : 
+					[
+						2,
+						3,
+						10,
+						14,
+						15
+					],
+					"jsonFile" : "directory-src-Debug-b6cf2213fc5053b67c22.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "src"
+				},
+				{
+					"build" : "src/App",
+					"jsonFile" : "directory-src.App-Debug-9d25c4701583ee0ac040.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "src/App",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				},
+				{
+					"build" : "src/Core",
+					"childIndexes" : 
+					[
+						4,
+						5
+					],
+					"jsonFile" : "directory-src.Core-Debug-d4c1453289db9b95fd89.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "src/Core"
+				},
+				{
+					"build" : "src/Core/Capture",
+					"jsonFile" : "directory-src.Core.Capture-Debug-a820b4a520c91222630d.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 3,
+					"projectIndex" : 0,
+					"source" : "src/Core/Capture",
+					"targetIndexes" : 
+					[
+						6,
+						7,
+						8
+					]
+				},
+				{
+					"build" : "src/Core/Protocols",
+					"childIndexes" : 
+					[
+						6,
+						7,
+						8,
+						9
+					],
+					"jsonFile" : "directory-src.Core.Protocols-Debug-90c29a3daf220330da1c.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 3,
+					"projectIndex" : 0,
+					"source" : "src/Core/Protocols"
+				},
+				{
+					"build" : "src/Core/Protocols/ApplicationLayer",
+					"jsonFile" : "directory-src.Core.Protocols.ApplicationLayer-Debug-06631d8db09d8e134eea.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 5,
+					"projectIndex" : 0,
+					"source" : "src/Core/Protocols/ApplicationLayer",
+					"targetIndexes" : 
+					[
+						3,
+						4,
+						5
+					]
+				},
+				{
+					"build" : "src/Core/Protocols/LinkLayer",
+					"jsonFile" : "directory-src.Core.Protocols.LinkLayer-Debug-670e5cad835b90e9ae74.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 5,
+					"projectIndex" : 0,
+					"source" : "src/Core/Protocols/LinkLayer",
+					"targetIndexes" : 
+					[
+						15,
+						16,
+						17
+					]
+				},
+				{
+					"build" : "src/Core/Protocols/NetworkLayer",
+					"jsonFile" : "directory-src.Core.Protocols.NetworkLayer-Debug-17bd6cc06dde0fb0db46.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 5,
+					"projectIndex" : 0,
+					"source" : "src/Core/Protocols/NetworkLayer",
+					"targetIndexes" : 
+					[
+						18,
+						19,
+						20
+					]
+				},
+				{
+					"build" : "src/Core/Protocols/TransportLayer",
+					"jsonFile" : "directory-src.Core.Protocols.TransportLayer-Debug-3b7eba562c7cdac6a0af.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 5,
+					"projectIndex" : 0,
+					"source" : "src/Core/Protocols/TransportLayer",
+					"targetIndexes" : 
+					[
+						24,
+						25,
+						26
+					]
+				},
+				{
+					"build" : "src/UI",
+					"childIndexes" : 
+					[
+						11,
+						12,
+						13
+					],
+					"jsonFile" : "directory-src.UI-Debug-1086fd47cd6af5181f43.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "src/UI",
+					"targetIndexes" : 
+					[
+						27,
+						28,
+						29
+					]
+				},
+				{
+					"build" : "src/UI/Pages",
+					"jsonFile" : "directory-src.UI.Pages-Debug-a3d2265752c98ea9124f.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 10,
+					"projectIndex" : 0,
+					"source" : "src/UI/Pages",
+					"targetIndexes" : 
+					[
+						21,
+						22,
+						23
+					]
+				},
+				{
+					"build" : "src/UI/Header",
+					"jsonFile" : "directory-src.UI.Header-Debug-8e07f5b766385be0ed2b.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 10,
+					"projectIndex" : 0,
+					"source" : "src/UI/Header",
+					"targetIndexes" : 
+					[
+						12,
+						13,
+						14
+					]
+				},
+				{
+					"build" : "src/UI/Widgets",
+					"jsonFile" : "directory-src.UI.Widgets-Debug-6992b69777ea5ff7c585.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 10,
+					"projectIndex" : 0,
+					"source" : "src/UI/Widgets",
+					"targetIndexes" : 
+					[
+						30,
+						31,
+						32
+					]
+				},
+				{
+					"build" : "src/Controller",
+					"jsonFile" : "directory-src.Controller-Debug-f0b2f1e053ad5da4f859.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "src/Controller",
+					"targetIndexes" : 
+					[
+						9,
+						10,
+						11
+					]
+				},
+				{
+					"build" : "src/Common",
+					"jsonFile" : "directory-src.Common-Debug-4e15477be5f1dec2cf8d.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "src/Common"
+				},
+				{
+					"build" : "third_party",
+					"jsonFile" : "directory-third_party-Debug-9b836fc236528aa76e21.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "third_party"
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16
+					],
+					"name" : "pbl_v1",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16,
+						17,
+						18,
+						19,
+						20,
+						21,
+						22,
+						23,
+						24,
+						25,
+						26,
+						27,
+						28,
+						29,
+						30,
+						31,
+						32
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 2,
+					"id" : "App::@12714508d24a4bb4e515",
+					"jsonFile" : "target-App-Debug-14b4f346b411abe6ad43.json",
+					"name" : "App",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "App_autogen::@12714508d24a4bb4e515",
+					"jsonFile" : "target-App_autogen-Debug-c939af1597e9dd5e10a4.json",
+					"name" : "App_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "App_autogen_timestamp_deps::@12714508d24a4bb4e515",
+					"jsonFile" : "target-App_autogen_timestamp_deps-Debug-8549cb91f72f97f020ca.json",
+					"name" : "App_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "ApplicationLayer::@ddc0aa3b0f783f33a0b1",
+					"jsonFile" : "target-ApplicationLayer-Debug-f1e8bdf96815cc18287f.json",
+					"name" : "ApplicationLayer",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "ApplicationLayer_autogen::@ddc0aa3b0f783f33a0b1",
+					"jsonFile" : "target-ApplicationLayer_autogen-Debug-01b09f0b8e87d18de2b9.json",
+					"name" : "ApplicationLayer_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "ApplicationLayer_autogen_timestamp_deps::@ddc0aa3b0f783f33a0b1",
+					"jsonFile" : "target-ApplicationLayer_autogen_timestamp_deps-Debug-616f500e4123a75fbcb5.json",
+					"name" : "ApplicationLayer_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "CaptureLib::@b11abb149bcda137bd9d",
+					"jsonFile" : "target-CaptureLib-Debug-2e2eb5312e315cd1ec43.json",
+					"name" : "CaptureLib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "CaptureLib_autogen::@b11abb149bcda137bd9d",
+					"jsonFile" : "target-CaptureLib_autogen-Debug-821fcfe7d99ee0734d09.json",
+					"name" : "CaptureLib_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "CaptureLib_autogen_timestamp_deps::@b11abb149bcda137bd9d",
+					"jsonFile" : "target-CaptureLib_autogen_timestamp_deps-Debug-719143d5dc8f155d0ca1.json",
+					"name" : "CaptureLib_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 14,
+					"id" : "ControllerLib::@11f1bd12b27f4837fc80",
+					"jsonFile" : "target-ControllerLib-Debug-b38ca20224467a1692a0.json",
+					"name" : "ControllerLib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 14,
+					"id" : "ControllerLib_autogen::@11f1bd12b27f4837fc80",
+					"jsonFile" : "target-ControllerLib_autogen-Debug-196e322d8c6fb2f34988.json",
+					"name" : "ControllerLib_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 14,
+					"id" : "ControllerLib_autogen_timestamp_deps::@11f1bd12b27f4837fc80",
+					"jsonFile" : "target-ControllerLib_autogen_timestamp_deps-Debug-aaf0a32e5adae709ed0a.json",
+					"name" : "ControllerLib_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 12,
+					"id" : "HeaderLib::@3def0f39a00c2638a8b4",
+					"jsonFile" : "target-HeaderLib-Debug-ba2a7be8c263089ce835.json",
+					"name" : "HeaderLib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 12,
+					"id" : "HeaderLib_autogen::@3def0f39a00c2638a8b4",
+					"jsonFile" : "target-HeaderLib_autogen-Debug-e908eb04da6ac521108a.json",
+					"name" : "HeaderLib_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 12,
+					"id" : "HeaderLib_autogen_timestamp_deps::@3def0f39a00c2638a8b4",
+					"jsonFile" : "target-HeaderLib_autogen_timestamp_deps-Debug-d3b6b7b8853d82299cd8.json",
+					"name" : "HeaderLib_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "LinkLayerLib::@43bbf7e7392bcdd44a03",
+					"jsonFile" : "target-LinkLayerLib-Debug-e9aeefe1afd89d4e0265.json",
+					"name" : "LinkLayerLib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "LinkLayerLib_autogen::@43bbf7e7392bcdd44a03",
+					"jsonFile" : "target-LinkLayerLib_autogen-Debug-966fb5e8c7d98a62797b.json",
+					"name" : "LinkLayerLib_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "LinkLayerLib_autogen_timestamp_deps::@43bbf7e7392bcdd44a03",
+					"jsonFile" : "target-LinkLayerLib_autogen_timestamp_deps-Debug-501c2a0b76d9d72187b4.json",
+					"name" : "LinkLayerLib_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 8,
+					"id" : "NetwrokLayerLib::@0394cefec4fc05c3f2e1",
+					"jsonFile" : "target-NetwrokLayerLib-Debug-302940ecd70321be1c26.json",
+					"name" : "NetwrokLayerLib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 8,
+					"id" : "NetwrokLayerLib_autogen::@0394cefec4fc05c3f2e1",
+					"jsonFile" : "target-NetwrokLayerLib_autogen-Debug-7a832967e084abad378f.json",
+					"name" : "NetwrokLayerLib_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 8,
+					"id" : "NetwrokLayerLib_autogen_timestamp_deps::@0394cefec4fc05c3f2e1",
+					"jsonFile" : "target-NetwrokLayerLib_autogen_timestamp_deps-Debug-5f2553a05ca2a7f51ad1.json",
+					"name" : "NetwrokLayerLib_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 11,
+					"id" : "PagesLib::@2b43316283d76cf61dd3",
+					"jsonFile" : "target-PagesLib-Debug-c0ffdeb3e13590d3d419.json",
+					"name" : "PagesLib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 11,
+					"id" : "PagesLib_autogen::@2b43316283d76cf61dd3",
+					"jsonFile" : "target-PagesLib_autogen-Debug-9cc9728a45465085df22.json",
+					"name" : "PagesLib_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 11,
+					"id" : "PagesLib_autogen_timestamp_deps::@2b43316283d76cf61dd3",
+					"jsonFile" : "target-PagesLib_autogen_timestamp_deps-Debug-0a2ae45d057524089551.json",
+					"name" : "PagesLib_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 9,
+					"id" : "TransportLayerLib::@131156b57afd6b1e8975",
+					"jsonFile" : "target-TransportLayerLib-Debug-9a310d67913a7aaf9ecb.json",
+					"name" : "TransportLayerLib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 9,
+					"id" : "TransportLayerLib_autogen::@131156b57afd6b1e8975",
+					"jsonFile" : "target-TransportLayerLib_autogen-Debug-548542a654ab5683a3bc.json",
+					"name" : "TransportLayerLib_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 9,
+					"id" : "TransportLayerLib_autogen_timestamp_deps::@131156b57afd6b1e8975",
+					"jsonFile" : "target-TransportLayerLib_autogen_timestamp_deps-Debug-f62685a9701adc3bd6c5.json",
+					"name" : "TransportLayerLib_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 10,
+					"id" : "UILib::@e6812f907734570e2a17",
+					"jsonFile" : "target-UILib-Debug-412c23c11501fef81576.json",
+					"name" : "UILib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 10,
+					"id" : "UILib_autogen::@e6812f907734570e2a17",
+					"jsonFile" : "target-UILib_autogen-Debug-43a4d953d63337cf0c98.json",
+					"name" : "UILib_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 10,
+					"id" : "UILib_autogen_timestamp_deps::@e6812f907734570e2a17",
+					"jsonFile" : "target-UILib_autogen_timestamp_deps-Debug-ea871b88ae70496e2c27.json",
+					"name" : "UILib_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 13,
+					"id" : "WidgetsLib::@bce7a740355b1c6c5ddc",
+					"jsonFile" : "target-WidgetsLib-Debug-2596d74558e016983b0b.json",
+					"name" : "WidgetsLib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 13,
+					"id" : "WidgetsLib_autogen::@bce7a740355b1c6c5ddc",
+					"jsonFile" : "target-WidgetsLib_autogen-Debug-74d814b382de46a8bc1f.json",
+					"name" : "WidgetsLib_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 13,
+					"id" : "WidgetsLib_autogen_timestamp_deps::@bce7a740355b1c6c5ddc",
+					"jsonFile" : "target-WidgetsLib_autogen_timestamp_deps-Debug-31a0908eb05b0e91b8ab.json",
+					"name" : "WidgetsLib_autogen_timestamp_deps",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/tienson/Qt/Repo/pbl_v1/build/Desktop_Qt_6_9_2-Debug",
+		"source" : "/home/tienson/Qt/Repo/pbl_v1"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}

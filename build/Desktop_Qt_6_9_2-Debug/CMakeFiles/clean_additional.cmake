@@ -1,0 +1,40 @@
+# Additional clean files
+cmake_minimum_required(VERSION 3.16)
+
+if("${CONFIG}" STREQUAL "" OR "${CONFIG}" STREQUAL "Debug")
+  file(REMOVE_RECURSE
+  "src/App/App_autogen"
+  "src/App/CMakeFiles/App_autogen.dir/AutogenUsed.txt"
+  "src/App/CMakeFiles/App_autogen.dir/ParseCache.txt"
+  "src/Controller/CMakeFiles/ControllerLib_autogen.dir/AutogenUsed.txt"
+  "src/Controller/CMakeFiles/ControllerLib_autogen.dir/ParseCache.txt"
+  "src/Controller/ControllerLib_autogen"
+  "src/Core/Capture/CMakeFiles/CaptureLib_autogen.dir/AutogenUsed.txt"
+  "src/Core/Capture/CMakeFiles/CaptureLib_autogen.dir/ParseCache.txt"
+  "src/Core/Capture/CaptureLib_autogen"
+  "src/Core/Protocols/ApplicationLayer/ApplicationLayer_autogen"
+  "src/Core/Protocols/ApplicationLayer/CMakeFiles/ApplicationLayer_autogen.dir/AutogenUsed.txt"
+  "src/Core/Protocols/ApplicationLayer/CMakeFiles/ApplicationLayer_autogen.dir/ParseCache.txt"
+  "src/Core/Protocols/LinkLayer/CMakeFiles/LinkLayerLib_autogen.dir/AutogenUsed.txt"
+  "src/Core/Protocols/LinkLayer/CMakeFiles/LinkLayerLib_autogen.dir/ParseCache.txt"
+  "src/Core/Protocols/LinkLayer/LinkLayerLib_autogen"
+  "src/Core/Protocols/NetworkLayer/CMakeFiles/NetwrokLayerLib_autogen.dir/AutogenUsed.txt"
+  "src/Core/Protocols/NetworkLayer/CMakeFiles/NetwrokLayerLib_autogen.dir/ParseCache.txt"
+  "src/Core/Protocols/NetworkLayer/NetwrokLayerLib_autogen"
+  "src/Core/Protocols/TransportLayer/CMakeFiles/TransportLayerLib_autogen.dir/AutogenUsed.txt"
+  "src/Core/Protocols/TransportLayer/CMakeFiles/TransportLayerLib_autogen.dir/ParseCache.txt"
+  "src/Core/Protocols/TransportLayer/TransportLayerLib_autogen"
+  "src/UI/CMakeFiles/UILib_autogen.dir/AutogenUsed.txt"
+  "src/UI/CMakeFiles/UILib_autogen.dir/ParseCache.txt"
+  "src/UI/Header/CMakeFiles/HeaderLib_autogen.dir/AutogenUsed.txt"
+  "src/UI/Header/CMakeFiles/HeaderLib_autogen.dir/ParseCache.txt"
+  "src/UI/Header/HeaderLib_autogen"
+  "src/UI/Pages/CMakeFiles/PagesLib_autogen.dir/AutogenUsed.txt"
+  "src/UI/Pages/CMakeFiles/PagesLib_autogen.dir/ParseCache.txt"
+  "src/UI/Pages/PagesLib_autogen"
+  "src/UI/UILib_autogen"
+  "src/UI/Widgets/CMakeFiles/WidgetsLib_autogen.dir/AutogenUsed.txt"
+  "src/UI/Widgets/CMakeFiles/WidgetsLib_autogen.dir/ParseCache.txt"
+  "src/UI/Widgets/WidgetsLib_autogen"
+  )
+endif()

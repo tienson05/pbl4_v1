@@ -1,0 +1,31 @@
+{
+	"backtrace" : 0,
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : 
+		[
+			"src/UI/Widgets/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			}
+		]
+	},
+	"folder" : 
+	{
+		"name" : "QtInternalTargets"
+	},
+	"id" : "WidgetsLib_autogen_timestamp_deps::@bce7a740355b1c6c5ddc",
+	"isGeneratorProvided" : true,
+	"name" : "WidgetsLib_autogen_timestamp_deps",
+	"paths" : 
+	{
+		"build" : "src/UI/Widgets",
+		"source" : "src/UI/Widgets"
+	},
+	"sources" : [],
+	"type" : "UTILITY"
+}
