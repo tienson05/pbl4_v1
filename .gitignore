@@ -1,0 +1,32 @@
+# ====== Qt / CMake build files ======
+build/
+bin/
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.autosave
+*.obj
+*.o
+*.a
+*.dll
+*.exe
+*.out
+*.app
+*.pdb
+
+# ====== Qt Creator ======
+*.creator.user
+*.creator.user.*
+*.creator.*
+CMakeLists.txt.user
+
+# ====== IDE & OS ======
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ====== Cache & Logs ======
+*.log
+*.cache
+*.tmp
