@@ -14,15 +14,15 @@ struct EthernetHeader {
     std::array<uint8_t, 6> dest_mac{};
     std::array<uint8_t, 6> src_mac{};
     uint16_t ether_type = 0;      // 0x0800: IPv4, 0x86DD: IPv6, 0x0806: ARP, 0x8100: VLAN
-    uint16_t vlan_tpid = 0;       // VLAN Tag Protocol ID (nếu có)
-    uint16_t vlan_tci = 0;        // VLAN Tag Control Info (PCP, DEI, VID)
+    // Ghi chú: vlan_tpid và vlan_tci đã bị xóa vì chúng
+    // được xử lý bởi struct VLANHeader và cờ has_vlan.
 };
 
 // ==================== LAYER 2.5: VLAN (802.1Q) ====================
 struct VLANHeader {
-    uint16_t tpid = 0;            // 0x8100
-    uint16_t tci = 0;             // Priority (3) + DEI (1) + VLAN ID (12)
-    uint16_t ether_type = 0;      // Loại gói sau VLAN
+    uint16_t tpid = 0;           // 0x8100
+    uint16_t tci = 0;            // Priority (3) + DEI (1) + VLAN ID (12)
+    uint16_t ether_type = 0;     // Loại gói sau VLAN
 };
 
 // ==================== LAYER 3: IPv4 ====================
@@ -183,13 +183,33 @@ struct PacketData {
     bool is_duplicate = false;
 
     // ======= Methods =======
+
+    /**
+     * @brief (ĐÃ SỬA) Reset toàn bộ dữ liệu của struct
+     * để chuẩn bị phân tích gói tin mới.
+     */
     void clear(){
         raw_packet.clear();
         tree_view.clear();
+        expert_info.clear(); // <-- ĐÃ THÊM
+        tree_depth = 0;      // <-- ĐÃ THÊM
+
         has_vlan = is_ipv4 = is_ipv6 = is_arp = false;
         is_tcp = is_udp = is_icmp = false;
         is_malformed = is_retransmitted = is_duplicate = false;
+
+        // --- ĐÃ THÊM: Reset tất cả các struct header ---
+        eth = EthernetHeader{};
+        vlan = VLANHeader{};
+        ipv4 = IPv4Header{};
+        ipv6 = IPv6Header{};
+        arp = ARPHeader{};
+        tcp = TCPHeader{};
+        udp = UDPHeader{};
+        icmp = ICMPHeader{};
+        app = ApplicationLayer{};
     }
+
     std::string toJson() const;
     void printTree() const{
         std::cout << tree_view;
@@ -197,4 +217,3 @@ struct PacketData {
 };
 
 #endif // PACKETDATA_HPP
-

@@ -32,14 +32,23 @@ public:
             vlan.tci = ntohs(*reinterpret_cast<const uint16_t*>(payload));
             vlan.ether_type = ntohs(*reinterpret_cast<const uint16_t*>(payload + 2));
 
-            eth.vlan_tpid = vlan.tpid;
-            eth.vlan_tci = vlan.tci;
             eth.ether_type = vlan.ether_type;
 
             return true;
         }
 
         return true;
+    }
+
+    // --- HÀM TRỢ GIÚP (HELPERS) ---
+
+    /**
+     * @brief (THÊM MỚI) Hàm trợ giúp chung để chuyển uint16_t sang Hex
+     */
+    static std::string to_hex(uint16_t val) {
+        std::ostringstream oss;
+        oss << "0x" << std::hex << std::setw(4) << std::setfill('0') << val;
+        return oss.str();
     }
 
     static std::string macToString(const std::array<uint8_t, 6>& mac) {
@@ -62,9 +71,8 @@ public:
         case 0x8864: return "PPPoE Session";
         case 0x8863: return "PPPoE Discovery";
         default: {
-            std::ostringstream oss;
-            oss << "0x" << std::hex << std::setw(4) << std::setfill('0') << type;
-            return oss.str();
+            // --- ĐÃ SỬA: Dùng hàm to_hex ---
+            return to_hex(type);
         }
         }
     }
@@ -88,25 +96,18 @@ public:
         tree += indent + "  Destination: " + macToString(eth.dest_mac) + "\n";
         tree += indent + "  Source: " + macToString(eth.src_mac) + "\n";
 
-        // EtherType hex
-        std::ostringstream type_oss;
-        type_oss << std::hex << std::setw(4) << std::setfill('0') << eth.ether_type;
-        tree += indent + "  Type: " + etherTypeToString(eth.ether_type) + " (0x" + type_oss.str() + ")\n";
+        // --- ĐÃ SỬA: Dùng hàm to_hex ---
+        tree += indent + "  Type: " + etherTypeToString(eth.ether_type) + " (" + to_hex(eth.ether_type) + ")\n";
 
         if (has_vlan) {
             tree += indent + "802.1Q Virtual LAN\n";
 
-            // TPID hex
-            std::ostringstream tpid_oss;
-            tpid_oss << std::hex << std::setw(4) << std::setfill('0') << vlan.tpid;
-            tree += indent + "  TPID: 0x" + tpid_oss.str() + "\n";
-
+            // --- ĐÃ SỬA: Dùng hàm to_hex ---
+            tree += indent + "  TPID: " + to_hex(vlan.tpid) + "\n";
             tree += indent + "  TCI: " + vlanTciToString(vlan.tci) + "\n";
 
-            // VLAN EtherType hex
-            std::ostringstream vlan_type_oss;
-            vlan_type_oss << std::hex << std::setw(4) << std::setfill('0') << vlan.ether_type;
-            tree += indent + "  Type: " + etherTypeToString(vlan.ether_type) + " (0x" + vlan_type_oss.str() + ")\n";
+            // --- ĐÃ SỬA: Dùng hàm to_hex ---
+            tree += indent + "  Type: " + etherTypeToString(vlan.ether_type) + " (" + to_hex(vlan.ether_type) + ")\n";
         }
     }
 };

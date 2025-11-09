@@ -9,6 +9,7 @@
 #include <QScrollBar>
 #include <QVariant>
 #include <QDateTime>
+#include <QColor> // <-- THÊM MỚI: Cần cho việc tô màu
 #include <ctime>
 #include <iomanip>
 #include <sstream>
@@ -61,14 +62,15 @@ void PacketTable::setupUI()
     setLayout(layout);
 }
 
-// === THÊM GÓI TIN ===
+// === THÊM GÓI TIN (ĐÃ SỬA) ===
 void PacketTable::addPacket(const PacketData &packet)
 {
     int row = packetList->rowCount();
     packetList->insertRow(row);
 
+    // --- TẠO CÁC MỤC (ITEMS) ---
     // CỘT 0: No.
-    packetList->setItem(row, 0, new QTableWidgetItem(QString::number(packet.packet_id)));
+    QTableWidgetItem* noItem = new QTableWidgetItem(QString::number(packet.packet_id));
 
     // CỘT 1: Time
     char timeStr[64];
@@ -77,23 +79,42 @@ void PacketTable::addPacket(const PacketData &packet)
     QString time = QString("%1.%2")
                        .arg(timeStr)
                        .arg(packet.timestamp.tv_nsec / 1000000, 3, 10, QChar('0'));
-    packetList->setItem(row, 1, new QTableWidgetItem(time));
 
-    // CỘT 2: Source
-    QString src = getSourceAddress(packet);
-    packetList->setItem(row, 2, new QTableWidgetItem(src));
-
-    // CỘT 3: Destination
-    QString dst = getDestinationAddress(packet);
-    packetList->setItem(row, 3, new QTableWidgetItem(dst));
-
-    // CỘT 4: Protocol
+    // CỘT 4: Protocol (Lấy sớm để dùng cho màu)
     QString proto = getProtocolName(packet);
-    packetList->setItem(row, 4, new QTableWidgetItem(proto));
 
-    // CỘT 5: Info
-    QString info = getInfo(packet);
-    packetList->setItem(row, 5, new QTableWidgetItem(info));
+    // TẠO DANH SÁCH CÁC MỤC HIỂN THỊ
+    QList<QTableWidgetItem*> items = {
+        noItem,                                     // 0
+        new QTableWidgetItem(time),                 // 1
+        new QTableWidgetItem(getSourceAddress(packet)),    // 2
+        new QTableWidgetItem(getDestinationAddress(packet)),// 3
+        new QTableWidgetItem(proto),                // 4
+        new QTableWidgetItem(getInfo(packet))       // 5
+    };
+
+    // --- LOGIC TÔ MÀU MỚI ---
+    QColor color;
+    if (proto == "TCP" || proto == "HTTP") {
+        color.setRgb(230, 245, 225); // Xanh lá nhạt
+    } else if (proto == "TLS") {
+        color.setRgb(230, 225, 245); // Tím nhạt
+    } else if (proto == "UDP" || proto == "DNS") {
+        color.setRgb(225, 240, 255); // Xanh dương nhạt
+    } else if (proto == "ICMP") {
+        color.setRgb(255, 245, 220); // Vàng/Cam nhạt
+    } else if (proto == "ARP") {
+        color.setRgb(250, 240, 250); // Hồng nhạt
+    } else {
+        color = Qt::white; // Mặc định
+    }
+
+    // Gán item và màu vào bảng
+    for(int i = 0; i < items.size(); ++i) {
+        items[i]->setBackground(color);
+        packetList->setItem(row, i, items[i]);
+    }
+    // --- KẾT THÚC LOGIC TÔ MÀU ---
 
     // CỘT ẨN (6): Lưu toàn bộ PacketData
     QTableWidgetItem* hidden = new QTableWidgetItem();
@@ -290,18 +311,47 @@ QString PacketTable::getDestinationAddress(const PacketData &p)
     return macToString(p.eth.dest_mac);
 }
 
+/**
+ * @brief (ĐÃ SỬA LỖI LOGIC)
+ * Lấy tên giao thức. Ưu tiên Tầng 7 (Application) trước,
+ * sau đó mới lùi về Tầng 4 (Transport), rồi Tầng 3 (Network).
+ */
 QString PacketTable::getProtocolName(const PacketData &p)
 {
-    if (p.is_arp) return "ARP";
-    if (p.is_icmp) return "ICMP";
+    // 1. Ưu tiên Tầng 7 (Application)
+    if (!p.app.protocol.empty()) {
+        return QString::fromStdString(p.app.protocol); // (ví dụ: "TLS", "HTTP", "DNS")
+    }
+
+    // 2. Nếu không có, lùi về Tầng 4 (Transport)
     if (p.is_tcp) return "TCP";
     if (p.is_udp) return "UDP";
-    if (!p.app.protocol.empty()) return QString::fromStdString(p.app.protocol);
+
+    // 3. Nếu không có, lùi về Tầng 3 (Network-specific)
+    if (p.is_icmp) return "ICMP";
+    if (p.is_arp) return "ARP";
+
+    // 4. Mặc định, trả về loại EtherType
     return QString("0x%1").arg(p.eth.ether_type, 4, 16, QChar('0')).toUpper();
 }
 
 QString PacketTable::getInfo(const PacketData &p)
 {
+    // (Ưu tiên thông tin Tầng 7)
+    if (!p.app.info.empty()) {
+        return QString::fromStdString(p.app.info);
+    }
+    if (p.app.is_http_request) {
+        return QString::fromStdString(p.app.http_method + " " + p.app.http_path);
+    }
+    if (p.app.is_http_response) {
+        return QString("HTTP %1").arg(p.app.http_status_code);
+    }
+    if (p.is_udp && p.app.protocol == "DNS") {
+        return p.app.is_dns_query ? "DNS Query" : "DNS Response";
+    }
+
+    // (Nếu không, lùi về thông tin Tầng 4)
     if (p.is_tcp) {
         QString f;
         if (p.tcp.flags & TCPHeader::SYN) f += "SYN ";
@@ -310,18 +360,8 @@ QString PacketTable::getInfo(const PacketData &p)
         if (p.tcp.flags & TCPHeader::RST) f += "RST ";
         return f.trimmed().isEmpty() ? "[TCP]" : f.trimmed();
     }
-    if (p.is_udp && p.app.protocol == "DNS") {
-        return p.app.is_dns_query ? "DNS Query" : "DNS Response";
-    }
-    if (p.app.is_http_request) {
-        return QString::fromStdString(p.app.http_method + " " + p.app.http_path);
-    }
-    if (p.app.is_http_response) {
-        return QString("HTTP %1").arg(p.app.http_status_code);
-    }
-    if (!p.app.info.empty()) {
-        return QString::fromStdString(p.app.info);
-    }
+
+    // (Mặc định, trả về độ dài)
     return QString("Len=%1").arg(p.cap_length);
 }
 

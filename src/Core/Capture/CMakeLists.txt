@@ -20,4 +20,11 @@ target_link_libraries(CaptureLib
     PUBLIC
         Qt6::Core
         ${PCAP_ROOT}/lib/libpcap.so
+
+        # --- LIÊN KẾT CÁC THƯ VIỆN CON ---
+        CommonLib
+        LinkLayerLib
+        NetworkLayerLib
+        TransportLayerLib
+        ApplicationLayerLib # <-- THÊM DÒNG NÀY
 )
