@@ -32,9 +32,19 @@ void PacketTable::setupUI()
     QStringList headers = {"No.", "Time", "Source", "Destination", "Protocol", "Info"};
     packetList->setHorizontalHeaderLabels(headers);
     packetList->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    packetList->horizontalHeader()->setStretchLastSection(true);
+    // 2. Yêu cầu cột CUỐI CÙNG (cột 5, "Info") tự động co giãn
+    // packetList->horizontalHeader()->setStretchLastSection(true);
+
+    // 3. (Tùy chọn) Đặt kích thước cố định/nhỏ cho các cột khác
+    // packetList->setColumnWidth(0, 60);  // Cột "No."
+    // packetList->setColumnWidth(1, 100); // Cột "Time"
+    // packetList->setColumnWidth(4, 80);  // Cột "Protocol"
+
     packetList->setSelectionBehavior(QAbstractItemView::SelectRows);
     packetList->setEditTriggers(QAbstractItemView::NoEditTriggers);
     packetList->hideColumn(6); // Ẩn cột Length (nếu không dùng)
+    packetList->verticalHeader()->setVisible(false);
 
     // === Chi tiết gói tin (Tree) ===
     packetDetails = new QTreeWidget(this);
@@ -277,37 +287,19 @@ void PacketTable::showHexDump(const PacketData &packet)
 // === HÀM HỖ TRỢ ===
 QString PacketTable::getSourceAddress(const PacketData &p)
 {
-    if (p.is_arp) return macToString(p.arp.sender_mac);
-    if (p.is_ipv4) {
-        QString s = ipToString(p.ipv4.src_ip);
-        if (p.is_tcp) s += ":" + QString::number(p.tcp.src_port);
-        else if (p.is_udp) s += ":" + QString::number(p.udp.src_port);
-        return s;
-    }
-    if (p.is_ipv6) {
-        QString s = ipv6ToString(p.ipv6.src_ip);
-        if (p.is_tcp) s += ":" + QString::number(p.tcp.src_port);
-        else if (p.is_udp) s += ":" + QString::number(p.udp.src_port);
-        return s;
-    }
+    if (p.is_arp) return ipToString(p.arp.sender_ip);
+    if (p.is_ipv4) return ipToString(p.ipv4.src_ip);
+    if (p.is_ipv6) return ipv6ToString(p.ipv6.src_ip);
+
     return macToString(p.eth.src_mac);
 }
 
 QString PacketTable::getDestinationAddress(const PacketData &p)
 {
-    if (p.is_arp) return macToString(p.arp.target_mac);
-    if (p.is_ipv4) {
-        QString s = ipToString(p.ipv4.dest_ip);
-        if (p.is_tcp) s += ":" + QString::number(p.tcp.dest_port);
-        else if (p.is_udp) s += ":" + QString::number(p.udp.dest_port);
-        return s;
-    }
-    if (p.is_ipv6) {
-        QString s = ipv6ToString(p.ipv6.dest_ip);
-        if (p.is_tcp) s += ":" + QString::number(p.tcp.dest_port);
-        else if (p.is_udp) s += ":" + QString::number(p.udp.dest_port);
-        return s;
-    }
+    if (p.is_arp) return ipToString(p.arp.target_ip); // Hiển thị IP người nhận ARP
+    if (p.is_ipv4) return ipToString(p.ipv4.dest_ip);
+    if (p.is_ipv6) return ipv6ToString(p.ipv6.dest_ip);
+
     return macToString(p.eth.dest_mac);
 }
 
@@ -337,9 +329,9 @@ QString PacketTable::getProtocolName(const PacketData &p)
 
 QString PacketTable::getInfo(const PacketData &p)
 {
-    // (Ưu tiên thông tin Tầng 7)
+    // 1. (Ưu tiên thông tin Tầng 7 - Application)
     if (!p.app.info.empty()) {
-        return QString::fromStdString(p.app.info);
+        return QString::fromStdString(p.app.info); // (ví dụ: "Transport Layer Security" hoặc "DNS Query...")
     }
     if (p.app.is_http_request) {
         return QString::fromStdString(p.app.http_method + " " + p.app.http_path);
@@ -347,21 +339,63 @@ QString PacketTable::getInfo(const PacketData &p)
     if (p.app.is_http_response) {
         return QString("HTTP %1").arg(p.app.http_status_code);
     }
+    // (Lưu ý: Logic DNS đã được xử lý bởi app.info,
+    //  nhưng chúng ta có thể giữ lại để dự phòng)
     if (p.is_udp && p.app.protocol == "DNS") {
         return p.app.is_dns_query ? "DNS Query" : "DNS Response";
     }
 
-    // (Nếu không, lùi về thông tin Tầng 4)
+    // 2. (Nếu không, lùi về thông tin Tầng 4 - Transport)
     if (p.is_tcp) {
+        // Ví dụ: "443 → 50115 [ACK] Seq=1 Ack=1 Win=485"
+        QString info = QString("%1 → %2 ")
+                           .arg(p.tcp.src_port)
+                           .arg(p.tcp.dest_port);
+
         QString f;
-        if (p.tcp.flags & TCPHeader::SYN) f += "SYN ";
-        if (p.tcp.flags & TCPHeader::ACK) f += "ACK ";
-        if (p.tcp.flags & TCPHeader::FIN) f += "FIN ";
-        if (p.tcp.flags & TCPHeader::RST) f += "RST ";
-        return f.trimmed().isEmpty() ? "[TCP]" : f.trimmed();
+        if (p.tcp.flags & TCPHeader::SYN) f += "SYN, ";
+        if (p.tcp.flags & TCPHeader::ACK) f += "ACK, ";
+        if (p.tcp.flags & TCPHeader::FIN) f += "FIN, ";
+        if (p.tcp.flags & TCPHeader::RST) f += "RST, ";
+        if (p.tcp.flags & TCPHeader::PSH) f += "PSH, ";
+
+        if (!f.isEmpty()) {
+            f.chop(2); // Xóa dấu ", " cuối cùng
+            info += QString("[%1] ").arg(f);
+        }
+
+        info += QString("Seq=%1 Ack=%2 Win=%3")
+                    .arg(p.tcp.seq_num)
+                    .arg(p.tcp.ack_num)
+                    .arg(p.tcp.window);
+        return info;
+    }
+    if (p.is_udp) {
+        // Ví dụ: "5353 → 5353 Len=120"
+        return QString("%1 → %2 Len=%3")
+            .arg(p.udp.src_port)
+            .arg(p.udp.dest_port)
+            .arg(p.udp.length - 8); // (Length của UDP payload = total - 8 byte header)
     }
 
-    // (Mặc định, trả về độ dài)
+    // 3. (Nếu không, lùi về thông tin Tầng 3 - Network)
+    if (p.is_arp) {
+        if (p.arp.opcode == 1) { // Request
+            return QString("Who has %1? Tell %2")
+                .arg(ipToString(p.arp.target_ip))
+                .arg(ipToString(p.arp.sender_ip));
+        } else { // Reply
+            return QString("%1 is at %2")
+                .arg(ipToString(p.arp.sender_ip))
+                .arg(macToString(p.arp.sender_mac));
+        }
+    }
+    if (p.is_icmp) {
+        // (Bạn có thể thêm logic lấy 'type' ở đây, ví dụ: "Echo (ping) request")
+        return "ICMP Packet";
+    }
+
+    // 4. (Mặc định, trả về độ dài)
     return QString("Len=%1").arg(p.cap_length);
 }
 
