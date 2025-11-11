@@ -1,5 +1,11 @@
 #include "MainWindow.hpp"
+#include "Header/HeaderWidget.hpp"
+#include "Pages/WelcomePage.hpp"
+#include "Pages/CapturePage.hpp"
+#include "Widgets/PacketTable.hpp"
+
 #include <QVBoxLayout>
+#include <QDebug> // (Để debug)
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -10,7 +16,7 @@ MainWindow::MainWindow(QWidget *parent)
     // --- QStackedWidget & Pages ---
     stack = new QStackedWidget(this);
     welcomePage = new WelcomePage(this);
-    capturePage = new CapturePage(this);
+    capturePage = new CapturePage(this); // <-- Tên biến là 'capturePage'
 
     stack->addWidget(welcomePage);
     stack->addWidget(capturePage);
@@ -25,8 +31,10 @@ MainWindow::MainWindow(QWidget *parent)
     mainLayout->addWidget(stack);
 
     setCentralWidget(central);
+    setWindowTitle("WiresharkMini");
+    resize(1280, 800);
 
-    // --- Kết nối signal cục bộ ---
+    // --- Kết nối signal cục bộ (cho Header) ---
     connect(header, &HeaderWidget::minimizeRequested, this, &MainWindow::onMinimizeRequested);
     connect(header, &HeaderWidget::maximizeRequested, this, &MainWindow::onMaximizeRequested);
     connect(header, &HeaderWidget::closeRequested, this, &MainWindow::onCloseRequested);
@@ -60,7 +68,46 @@ void MainWindow::showCapturePage() {
     stack->setCurrentWidget(capturePage);
 }
 
-// --- Các slot xử lý cục bộ ---
+// --- SLOTS CÔNG KHAI (do AppController gọi) ---
+
+/**
+ * @brief (ĐÃ SỬA) Chuyển tiếp lệnh 'addPacket' xuống PacketTable
+ */
+void MainWindow::addPacketToTable(const PacketData &packet)
+{
+    // Tên biến đúng là 'capturePage' (không có 'm_')
+    if (capturePage) {
+        capturePage->packetTable->addPacket(packet);
+    }
+}
+
+/**
+ * @brief (ĐÃ SỬA) Chuyển tiếp lệnh 'clearData' xuống PacketTable
+ */
+void MainWindow::clearPacketTable()
+{
+    if (capturePage) {
+        capturePage->packetTable->clearData();
+    }
+}
+/**
+ * @brief (THÊM MỚI) Hàm này được AppController gọi khi cú pháp BPF bị sai.
+ */
+void MainWindow::showFilterError(const QString &errorText)
+{
+    QMessageBox::warning(this, "Display Filter Error",
+                         "The filter syntax is invalid. Please check and try again.\n\n"
+                         "Error: " + errorText);
+}
+// --- Hàm tiện ích (do AppController gọi) ---
+void MainWindow::setDevices(const QVector<QPair<QString, QString>> &devices)
+{
+    // (Giả sử WelcomePage có hàm này)
+    welcomePage->setDevices(devices);
+}
+
+
+// --- Các slot xử lý cục bộ (cho Header) ---
 void MainWindow::onMinimizeRequested() {
     showMinimized();
 }
@@ -74,13 +121,4 @@ void MainWindow::onMaximizeRequested() {
 
 void MainWindow::onCloseRequested() {
     close();
-}
-
-void MainWindow::addPacketToTable(const PacketData &packet)
-{
-    capturePage->packetTable->addPacket(packet);
-}
-void MainWindow::setDevices(const QVector<QPair<QString, QString>> &devices)
-{
-    welcomePage->setDevices(devices);
 }

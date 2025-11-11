@@ -1,6 +1,8 @@
 add_library(ControllerLib STATIC
     AppController.cpp
     AppController.hpp
+    ControllerLib/DisplayFilterEngine.cpp
+    ControllerLib/DisplayFilterEngine.hpp
 )
 
 # Cho phép các module khác include header trong UI/

@@ -9,11 +9,11 @@
 #include <QScrollBar>
 #include <QVariant>
 #include <QDateTime>
-#include <QColor> // <-- THÊM MỚI: Cần cho việc tô màu
+#include <QColor>
 #include <ctime>
 #include <iomanip>
 #include <sstream>
-
+#include <QRegularExpression>
 PacketTable::PacketTable(QWidget *parent)
     : QWidget(parent)
 {
@@ -31,7 +31,7 @@ void PacketTable::setupUI()
     packetList->setColumnCount(7); // 6 cột hiển thị + 1 cột ẩn
     QStringList headers = {"No.", "Time", "Source", "Destination", "Protocol", "Info"};
     packetList->setHorizontalHeaderLabels(headers);
-    packetList->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    // packetList->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     packetList->horizontalHeader()->setStretchLastSection(true);
     // 2. Yêu cầu cột CUỐI CÙNG (cột 5, "Info") tự động co giãn
     // packetList->horizontalHeader()->setStretchLastSection(true);
@@ -71,7 +71,15 @@ void PacketTable::setupUI()
     layout->addWidget(mainSplitter);
     setLayout(layout);
 }
+// --- HÀM MỚI ---
+void PacketTable::clearData()
+{
+    packetList->setRowCount(0); // Xóa bảng
+    packetDetails->clear();     // Xóa cây chi tiết
+    packetBytes->clear();       // Xóa hex dump
+}
 
+// --- HÀM LOGIC LỌC MỚI (STATIC) ---
 // === THÊM GÓI TIN (ĐÃ SỬA) ===
 void PacketTable::addPacket(const PacketData &packet)
 {
@@ -310,20 +318,14 @@ QString PacketTable::getDestinationAddress(const PacketData &p)
  */
 QString PacketTable::getProtocolName(const PacketData &p)
 {
-    // 1. Ưu tiên Tầng 7 (Application)
+    // (Đã sửa: Ưu tiên Tầng 7)
     if (!p.app.protocol.empty()) {
-        return QString::fromStdString(p.app.protocol); // (ví dụ: "TLS", "HTTP", "DNS")
+        return QString::fromStdString(p.app.protocol); // "TLS", "HTTP", "DNS"
     }
-
-    // 2. Nếu không có, lùi về Tầng 4 (Transport)
     if (p.is_tcp) return "TCP";
     if (p.is_udp) return "UDP";
-
-    // 3. Nếu không có, lùi về Tầng 3 (Network-specific)
     if (p.is_icmp) return "ICMP";
     if (p.is_arp) return "ARP";
-
-    // 4. Mặc định, trả về loại EtherType
     return QString("0x%1").arg(p.eth.ether_type, 4, 16, QChar('0')).toUpper();
 }
 
@@ -331,7 +333,7 @@ QString PacketTable::getInfo(const PacketData &p)
 {
     // 1. (Ưu tiên thông tin Tầng 7 - Application)
     if (!p.app.info.empty()) {
-        return QString::fromStdString(p.app.info); // (ví dụ: "Transport Layer Security" hoặc "DNS Query...")
+        return QString::fromStdString(p.app.info); // "Transport Layer Security"
     }
     if (p.app.is_http_request) {
         return QString::fromStdString(p.app.http_method + " " + p.app.http_path);
@@ -416,13 +418,19 @@ QString PacketTable::macToString(const std::array<uint8_t, 6>& mac)
         .arg(mac[5], 2, 16, QChar('0')).toUpper();
 }
 
-QString PacketTable::ipToString(uint32_t ip)
+/**
+ * @brief (ĐÃ SỬA LỖI) Chuyển đổi IP (host order) sang chuỗi.
+ */
+QString PacketTable::ipToString(uint32_t ip_host_order)
 {
+    // IP `uint32_t` từ parser đã ở dạng Host Order (Little Endian)
+    // Ví dụ: 192.168.1.9 là 0x0901A8C0
+    // Chúng ta cần in các byte theo thứ tự ngược lại
     return QString("%1.%2.%3.%4")
-    .arg((ip >> 24) & 0xFF)
-        .arg((ip >> 16) & 0xFF)
-        .arg((ip >> 8)  & 0xFF)
-        .arg(ip & 0xFF);
+        .arg((ip_host_order) & 0xFF)       // Byte 1 (C0 -> 192)
+        .arg((ip_host_order >> 8)  & 0xFF) // Byte 2 (A8 -> 168)
+        .arg((ip_host_order >> 16) & 0xFF) // Byte 3 (01 -> 1)
+        .arg((ip_host_order >> 24) & 0xFF);  // Byte 4 (09 -> 9)
 }
 
 QString PacketTable::ipv6ToString(const std::array<uint8_t, 16>& ip)
