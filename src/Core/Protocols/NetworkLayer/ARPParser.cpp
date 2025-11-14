@@ -20,11 +20,12 @@ static std::string macToString(const std::array<uint8_t, 6>& mac) {
     return std::string(buf);
 }
 
-// Hàm trợ giúp để chuyển đổi IP (uint32_t host order)
-static std::string ipToString(uint32_t ip_host_order) {
+// Hàm trợ giúp để chuyển đổi IP (uint32_t)
+// (Lưu ý: Hàm này giả định ip_val là Network Order)
+static std::string ipToString(uint32_t ip_val) {
     char buf[INET_ADDRSTRLEN];
     struct in_addr addr;
-    addr.s_addr = htonl(ip_host_order); // Chuyển về network order để in
+    addr.s_addr = ip_val; // Dùng trực tiếp (đã là network order)
     inet_ntop(AF_INET, &addr, buf, sizeof(buf));
     return std::string(buf);
 }
@@ -64,9 +65,11 @@ bool ARPParser::parse(ARPHeader& arp, const uint8_t* data, size_t len) {
     memcpy(&sender_ip_net, arp_hdr->arp_spa, 4);
     memcpy(&target_ip_net, arp_hdr->arp_tpa, 4);
 
-    // Lưu IP ở dạng Host Byte Order (dạng số nguyên)
-    arp.sender_ip = ntohl(sender_ip_net);
-    arp.target_ip = ntohl(target_ip_net);
+    // --- ĐÃ SỬA LỖI (Bỏ ntohl()) ---
+    // (Lưu IP ở dạng Network Byte Order để khớp với IPv4Parser)
+    arp.sender_ip = sender_ip_net;
+    arp.target_ip = target_ip_net;
+    // --- KẾT THÚC SỬA LỖI ---
 
     // Chỉ chấp nhận ARP cho Ethernet và IPv4
     if (arp.hardware_type != ARPHRD_ETHER ||
