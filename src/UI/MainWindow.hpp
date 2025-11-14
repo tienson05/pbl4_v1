@@ -4,6 +4,7 @@
 #include <QStackedWidget>
 #include <QVector>
 #include <QPair>
+#include <QList> // <-- THÊM MỚI
 #include "../Common/PacketData.hpp"
 #include <QMessageBox>
 
@@ -24,22 +25,25 @@ public:
 
 public slots:
     // --- CÁC SLOT CÔNG KHAI (để AppController kết nối) ---
-    // (Lỗi của bạn là đã khai báo các hàm này ở nhiều nơi)
 
     /**
-     * @brief Slot nhận tín hiệu từ AppController
-     * và chuyển tiếp gói tin xuống PacketTable.
+     * @brief Slot này nhận MỘT gói tin (ví dụ: khi bắt live)
      */
     void addPacketToTable(const PacketData &packet);
 
     /**
-     * @brief Slot nhận tín hiệu từ AppController
-     * và yêu cầu PacketTable tự xóa sạch.
+     * @brief (THÊM MỚI) Slot này nhận MỘT LÔ gói tin
+     * (ví dụ: khi lọc lại) để tăng hiệu suất.
+     */
+    void addPacketsToTable(const QList<PacketData> &packets);
+
+    /**
+     * @brief Slot này yêu cầu PacketTable tự xóa sạch.
      */
     void clearPacketTable();
+
     /**
-    * @brief (THÊM MỚI) Slot này nhận tín hiệu lỗi cú pháp
-     * từ AppController và hiển thị một QMessageBox.
+     * @brief Slot này nhận tín hiệu lỗi cú pháp
      */
     void showFilterError(const QString &errorText);
 
@@ -51,21 +55,16 @@ private slots:
 
 signals:
     // === CÁC TÍN HIỆU (để AppController "lắng nghe") ===
-    // (Đây là các tín hiệu được "forward" (chuyển tiếp) từ các Page con)
-
-    // Signals từ WelcomePage
     void interfaceSelected(const QString &interfaceName, const QString &filterText);
     void openFileRequested();
-
-    // Signals từ CapturePage
     void onRestartCaptureClicked();
     void onStopCaptureClicked();
     void onPauseCaptureClicked();
-    void onApplyFilterClicked(const QString &filterText); // <-- Filter hiển thị
+    void onApplyFilterClicked(const QString &filterText);
 
 private:
     HeaderWidget *header;
     QStackedWidget *stack;
     WelcomePage *welcomePage;
-    CapturePage *capturePage; // <-- Tên biến đúng là 'capturePage'
+    CapturePage *capturePage;
 };

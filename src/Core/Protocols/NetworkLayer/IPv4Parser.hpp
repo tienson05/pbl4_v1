@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <sstream>
 #include <algorithm>
+#include <cstring> // <-- THÊM MỚI: Cần cho memcpy
 
 class IPv4Parser {
 public:
@@ -28,15 +29,28 @@ public:
         size_t header_len = ipv4.ihl * 4;
         if (len < header_len) return false;
 
-        ipv4.tos             = data[1];
-        ipv4.total_length    = ntohs(*reinterpret_cast<const uint16_t*>(data + 2));
-        ipv4.id              = ntohs(*reinterpret_cast<const uint16_t*>(data + 4));
+        ipv4.tos               = data[1];
+        ipv4.total_length      = ntohs(*reinterpret_cast<const uint16_t*>(data + 2));
+        ipv4.id                = ntohs(*reinterpret_cast<const uint16_t*>(data + 4));
         ipv4.flags_frag_offset = ntohs(*reinterpret_cast<const uint16_t*>(data + 6));
-        ipv4.ttl             = data[8];
-        ipv4.protocol        = data[9];
-        ipv4.header_checksum = ntohs(*reinterpret_cast<const uint16_t*>(data + 10));
-        ipv4.src_ip          = *reinterpret_cast<const uint32_t*>(data + 12);
-        ipv4.dest_ip         = *reinterpret_cast<const uint32_t*>(data + 16);
+        ipv4.ttl               = data[8];
+        ipv4.protocol          = data[9];
+        ipv4.header_checksum   = ntohs(*reinterpret_cast<const uint16_t*>(data + 10));
+
+        // --- ĐÂY LÀ PHẦN SỬA LỖI ---
+        // Chúng ta phải chuyển đổi từ Network Order (Big Endian)
+        // sang Host Order (Little Endian)
+
+        // 1. Sao chép (copy) 4 byte (Network Order) vào một biến tạm
+        uint32_t src_ip_net, dest_ip_net;
+        memcpy(&src_ip_net, data + 12, 4);
+        memcpy(&dest_ip_net, data + 16, 4);
+
+        // 2. Dùng ntohl() để chuyển đổi và lưu trữ (ở dạng Host Order)
+        ipv4.src_ip  = ntohl(src_ip_net);
+        ipv4.dest_ip = ntohl(dest_ip_net);
+        // --- KẾT THÚC SỬA LỖI ---
+
 
         ipv4.options_len = header_len > 20 ? header_len - 20 : 0;
         if (ipv4.options_len > 0) {
@@ -48,14 +62,8 @@ public:
         return true;
     }
 
-    static std::string ipToString(uint32_t ip) {
-        std::ostringstream oss;
-        oss << ((ip >> 24) & 0xFF) << "."
-            << ((ip >> 16) & 0xFF) << "."
-            << ((ip >>  8) & 0xFF) << "."
-            << ( ip        & 0xFF);
-        return oss.str();
-    }
+    // --- HÀM ipToString ĐÃ BỊ XÓA ---
+    // (Vì hàm này thuộc về PacketTable.cpp)
 
     static std::string protocolToString(uint8_t proto) {
         switch (proto) {
@@ -85,17 +93,14 @@ public:
         tree += indent + "  Version: " + std::to_string(ipv4.version) + "\n";
         tree += indent + "  Header Length: " + std::to_string(ipv4.ihl * 4) + " bytes (" + std::to_string(ipv4.ihl) + ")\n";
 
-        // TOS (DSCP + ECN)
         tree += indent + "  Differentiated Services: 0x"
                 + to_hex(ipv4.tos, 2) + "\n";
 
         tree += indent + "  Total Length: " + std::to_string(ipv4.total_length) + " bytes\n";
 
-        // Identification
         tree += indent + "  Identification: 0x" + to_hex(ipv4.id)
                 + " (" + std::to_string(ipv4.id) + ")\n";
 
-        // Flags & Fragment Offset
         uint16_t flags = ipv4.flags_frag_offset >> 13;
         uint16_t frag_offset = ipv4.flags_frag_offset & 0x1FFF;
         tree += indent + "  Flags: 0x" + to_hex(flags, 1)
@@ -106,11 +111,11 @@ public:
         tree += indent + "  Protocol: " + protocolToString(ipv4.protocol)
                 + " (" + std::to_string(static_cast<int>(ipv4.protocol)) + ")\n";
 
-        // Header Checksum
         tree += indent + "  Header Checksum: 0x" + to_hex(ipv4.header_checksum) + "\n";
 
-        tree += indent + "  Source: " + ipToString(ipv4.src_ip) + "\n";
-        tree += indent + "  Destination: " + ipToString(ipv4.dest_ip) + "\n";
+        // (Xóa 2 dòng hiển thị IP ở đây, vì PacketTable sẽ lo việc đó)
+        tree += indent + "  Source: (IP được lưu ở dạng Host Order)\n";
+        tree += indent + "  Destination: (IP được lưu ở dạng Host Order)\n";
 
         if (ipv4.options_len > 0) {
             tree += indent + "  Options: " + std::to_string(ipv4.options_len) + " bytes\n";

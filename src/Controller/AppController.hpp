@@ -5,6 +5,7 @@
 #include "../Core/Capture/CaptureEngine.hpp"
 #include "../Common/PacketData.hpp"
 #include "../Controller/ControllerLib/DisplayFilterEngine.hpp"
+#include <QThread> // <-- THÊM MỚI
 
 class AppController : public QObject {
     Q_OBJECT
@@ -14,11 +15,13 @@ public:
 signals:
     void displayNewPacket(const PacketData &packet);
     void clearPacketTable();
+    void displayFilterError(const QString &errorText);
 
     /**
-     * @brief (THÊM MỚI) Gửi lỗi cú pháp filter lên UI
+     * @brief (THÊM MỚI) Tín hiệu này dùng để gửi một LÔ
+     * gói tin đã được lọc lên UI, thay vì gửi từng cái.
      */
-    void displayFilterError(const QString &errorText);
+    void displayFilteredPackets(const QList<PacketData> &packets);
 
 private:
     MainWindow *m_mainWindow;
@@ -26,17 +29,20 @@ private:
     void loadInterfaces();
     void refreshFullDisplay();
 
-    // --- BIẾN THÀNH VIÊN ĐÃ THAY ĐỔI ---
     QList<PacketData> m_allPackets;
-    // QString m_currentDisplayFilter;
     DisplayFilterEngine *m_filterEngine;
 
+    QThread* m_filterThread = nullptr; // <-- THÊM MỚI: Luồng để lọc
+
 private slots:
+    // (Các slot từ UI giữ nguyên)
     void onInterfaceSelected(const QString &interfaceName, const QString &filterText);
     void onOpenFileRequested();
     void onRestartCaptureClicked();
     void onStopCaptureClicked();
     void onPauseCaptureClicked();
     void onApplyFilterClicked(const QString &filterText);
-    void onPacketCaptured(const PacketData &packet);
+
+    // Slot nhận lô gói tin từ Core
+    void onPacketsCaptured(const QList<PacketData> &packets);
 };

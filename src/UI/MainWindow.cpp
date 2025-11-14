@@ -2,10 +2,10 @@
 #include "Header/HeaderWidget.hpp"
 #include "Pages/WelcomePage.hpp"
 #include "Pages/CapturePage.hpp"
-#include "Widgets/PacketTable.hpp"
+#include "Widgets/PacketTable.hpp" // <-- Cần thiết
 
 #include <QVBoxLayout>
-#include <QDebug> // (Để debug)
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -16,7 +16,7 @@ MainWindow::MainWindow(QWidget *parent)
     // --- QStackedWidget & Pages ---
     stack = new QStackedWidget(this);
     welcomePage = new WelcomePage(this);
-    capturePage = new CapturePage(this); // <-- Tên biến là 'capturePage'
+    capturePage = new CapturePage(this);
 
     stack->addWidget(welcomePage);
     stack->addWidget(capturePage);
@@ -70,39 +70,40 @@ void MainWindow::showCapturePage() {
 
 // --- SLOTS CÔNG KHAI (do AppController gọi) ---
 
-/**
- * @brief (ĐÃ SỬA) Chuyển tiếp lệnh 'addPacket' xuống PacketTable
- */
 void MainWindow::addPacketToTable(const PacketData &packet)
 {
-    // Tên biến đúng là 'capturePage' (không có 'm_')
     if (capturePage) {
-        capturePage->packetTable->addPacket(packet);
+        capturePage->packetTable->onPacketReceived(packet);
     }
 }
 
 /**
- * @brief (ĐÃ SỬA) Chuyển tiếp lệnh 'clearData' xuống PacketTable
+ * @brief (THÊM MỚI) Chuyển tiếp lệnh 'addPackets' (số nhiều) xuống PacketTable
  */
+void MainWindow::addPacketsToTable(const QList<PacketData> &packets)
+{
+    if (capturePage) {
+        capturePage->packetTable->onPacketsReceived(packets);
+    }
+}
+
 void MainWindow::clearPacketTable()
 {
     if (capturePage) {
         capturePage->packetTable->clearData();
     }
 }
-/**
- * @brief (THÊM MỚI) Hàm này được AppController gọi khi cú pháp BPF bị sai.
- */
+
 void MainWindow::showFilterError(const QString &errorText)
 {
     QMessageBox::warning(this, "Display Filter Error",
                          "The filter syntax is invalid. Please check and try again.\n\n"
                          "Error: " + errorText);
 }
+
 // --- Hàm tiện ích (do AppController gọi) ---
 void MainWindow::setDevices(const QVector<QPair<QString, QString>> &devices)
 {
-    // (Giả sử WelcomePage có hàm này)
     welcomePage->setDevices(devices);
 }
 
@@ -122,3 +123,5 @@ void MainWindow::onMaximizeRequested() {
 void MainWindow::onCloseRequested() {
     close();
 }
+
+// --- CÁC HÀM BỊ TRÙNG LẶP ĐÃ BỊ XÓA ---

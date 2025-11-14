@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QString>
+#include <QList> // <-- THÊM MỚI
 #include <pcap.h>
 #include "../../Common/PacketData.hpp"
 
@@ -14,7 +15,6 @@ public:
 
     void setInterface(const QString &interfaceName);
     void setCaptureFilter(const QString &filter);
-    void setDisplayFilter(const QString &filter);
     void startCapture();
     void stopCapture();
     void pauseCapture();
@@ -22,11 +22,15 @@ public:
     bool isPaused() const { return m_isPaused; }
 
 signals:
-    void packetCaptured(const PacketData &packet);
+    /**
+     * @brief (ĐÃ THAY ĐỔI) Phát ra một LÔ gói tin thay vì 1 gói
+     */
+    void packetsCaptured(const QList<PacketData> &packets); // <-- ĐÃ THAY ĐỔI
+
     void errorOccurred(const QString &error);
 
 private slots:
-    void captureLoop();
+    void captureLoop(); // Hàm này sẽ được QThread gọi
 
 private:
     // --- pcap ---
@@ -36,16 +40,14 @@ private:
     // --- config ---
     QString m_interface;
     QString m_captureFilter;
-    QString m_displayFilter;
 
     // --- state ---
-    bool m_isPaused = false;
-    bool m_isRunning = false;
+    volatile bool m_isPaused = false;  // <-- THÊM volatile
+    volatile bool m_isRunning = false; // <-- THÊM volatile
     int m_packetCounter = 0;
 
     // --- helper ---
     void setupPcap();
     void closePcap();
     bool applyCaptureFilter();
-    void emitPacket(const PacketData& pkt);
 };

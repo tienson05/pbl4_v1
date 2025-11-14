@@ -2,16 +2,16 @@
 #include "../Core/Capture/InterfaceManager.hpp"
 #include <QDebug>
 #include <QDateTime>
+#include <QThread> // <-- THÊM MỚI: Cần cho luồng lọc
 
 AppController::AppController(MainWindow *mainWindow, QObject *parent)
     : QObject(parent),
     m_mainWindow(mainWindow)
-// m_currentDisplayFilter("") // <-- ĐÃ XÓA
 {
     // --- Khởi tạo Core ---
     m_captureEngine = new CaptureEngine(this);
 
-    // --- THÊM MỚI: Khởi tạo Bộ máy Lọc ---
+    // --- Khởi tạo Bộ máy Lọc ---
     m_filterEngine = new DisplayFilterEngine(this);
 
     loadInterfaces();
@@ -24,17 +24,21 @@ AppController::AppController(MainWindow *mainWindow, QObject *parent)
     connect(m_mainWindow, &MainWindow::onPauseCaptureClicked, this, &AppController::onPauseCaptureClicked);
     connect(m_mainWindow, &MainWindow::onApplyFilterClicked, this, &AppController::onApplyFilterClicked);
 
-    // --- Connect signal từ Core ---
-    connect(m_captureEngine, &CaptureEngine::packetCaptured, this, &AppController::onPacketCaptured);
+    // --- (ĐÃ THAY ĐỔI) Kết nối signal từ Core ---
+    // (Kết nối signal "lô" packetsCaptured VỚI slot "lô" onPacketsCaptured)
+    connect(m_captureEngine, &CaptureEngine::packetsCaptured,
+            this, &AppController::onPacketsCaptured);
 
     // --- Connect TÍN HIỆU (Signal) của AppController VỚI (Slot) của MainWindow ---
     connect(this, &AppController::displayNewPacket, m_mainWindow, &MainWindow::addPacketToTable);
     connect(this, &AppController::clearPacketTable, m_mainWindow, &MainWindow::clearPacketTable);
 
-    // --- THÊM MỚI: Kết nối tín hiệu Lỗi Filter với MainWindow ---
-    // (Bạn sẽ cần thêm slot 'showFilterError' vào MainWindow)
-    connect(this, &AppController::displayFilterError,
-            m_mainWindow, &MainWindow::showFilterError);
+    // --- THÊM MỚI: Kết nối tín hiệu LÔ ĐÃ LỌC ---
+    // (Chúng ta sẽ cần thêm slot 'addPacketsToTable' (có 's') vào MainWindow)
+    connect(this, &AppController::displayFilteredPackets,
+            m_mainWindow, &MainWindow::addPacketsToTable);
+
+    connect(this, &AppController::displayFilterError, m_mainWindow, &MainWindow::showFilterError);
 }
 
 void AppController::onInterfaceSelected(const QString &interfaceName, const QString &filterText)
@@ -98,45 +102,86 @@ void AppController::onApplyFilterClicked(const QString &filterText)
     {
         // 2. Nếu lỗi cú pháp, gửi tín hiệu lỗi lên UI
         emit displayFilterError(m_filterEngine->getLastError());
-
-        // (Chúng ta xóa bộ lọc nếu nó bị lỗi)
         m_filterEngine->setFilter("");
     }
 
-    // 3. Lọc lại toàn bộ bảng
+    // 3. Lọc lại toàn bộ bảng (sẽ chạy trên luồng MỚI)
     refreshFullDisplay();
 }
 
 /**
- * @brief (ĐÃ THAY ĐỔI) Được gọi khi Core bắt được 1 gói tin
+ * @brief (ĐÃ THAY ĐỔI) Được gọi khi Core bắt được MỘT LÔ gói tin
  */
-void AppController::onPacketCaptured(const PacketData &packet)
+void AppController::onPacketsCaptured(const QList<PacketData> &packets)
 {
-    // 1. Luôn luôn lưu vào danh sách chính
-    m_allPackets.append(packet);
+    // Tạo một lô (batch) mới chỉ chứa các gói tin đã lọc
+    QList<PacketData> filteredBatch;
 
-    // 2. Chỉ gửi tín hiệu hiển thị nếu nó khớp với bộ lọc BPF
-    if (m_filterEngine->packetMatches(packet))
+    for (const PacketData &packet : packets)
     {
-        emit displayNewPacket(packet);
+        // 1. Luôn luôn lưu vào danh sách chính
+        m_allPackets.append(packet);
+
+        // 2. Chỉ thêm vào lô mới nếu nó khớp
+        if (m_filterEngine->packetMatches(packet))
+        {
+            filteredBatch.append(packet);
+        }
+    }
+
+    // 3. Gửi LÔ ĐÃ LỌC lên UI (nếu có)
+    if (!filteredBatch.isEmpty()) {
+        emit displayFilteredPackets(filteredBatch);
     }
 }
 
 /**
- * @brief (ĐÃ THAY ĐỔI) Lọc lại toàn bộ danh sách
+ * @brief (ĐÃ THAY ĐỔI HOÀN TOÀN) Chạy việc lọc trên luồng nền
  */
 void AppController::refreshFullDisplay()
 {
-    // 1. Yêu cầu UI xóa sạch
+    // 0. Dừng luồng lọc cũ (nếu nó đang chạy)
+    if (m_filterThread && m_filterThread->isRunning()) {
+        m_filterThread->requestInterruption(); // Yêu cầu dừng
+        m_filterThread->quit();
+        m_filterThread->wait(1000); // Chờ tối đa 1 giây
+    }
+
+    // 1. Yêu cầu UI xóa sạch (việc này nhanh)
     emit clearPacketTable();
 
-    // 2. Lặp lại danh sách chính
-    for (const PacketData &packet : m_allPackets) {
-        // 3. Chỉ thêm lại những gói tin khớp với bộ lọc BPF
-        if (m_filterEngine->packetMatches(packet)) {
-            emit displayNewPacket(packet);
+    // 2. Tạo một luồng (thread) "dùng một lần"
+    m_filterThread = QThread::create([this]() {
+
+        QList<PacketData> filteredList; // Danh sách kết quả
+
+        // 3. Lặp lại danh sách chính (trên LUỒNG NỀN)
+        for (const PacketData &packet : m_allPackets) {
+
+            // (Kiểm tra xem luồng chính có yêu cầu dừng không)
+            if (QThread::currentThread()->isInterruptionRequested()) {
+                return; // Dừng việc lọc
+            }
+
+            // 4. Chỉ thêm lại những gói tin khớp
+            if (m_filterEngine->packetMatches(packet)) {
+                filteredList.append(packet);
+            }
         }
-    }
+
+        // 5. Gửi TOÀN BỘ kết quả đã lọc lên luồng chính
+        if (!filteredList.isEmpty()) {
+            QMetaObject::invokeMethod(this, [this, filteredList](){
+                emit displayFilteredPackets(filteredList);
+            }, Qt::QueuedConnection);
+        }
+    });
+
+    // 6. Tự động xóa luồng khi nó chạy xong
+    connect(m_filterThread, &QThread::finished, m_filterThread, &QObject::deleteLater);
+
+    // 7. Bắt đầu luồng lọc
+    m_filterThread->start();
 }
 
 void AppController::loadInterfaces()
