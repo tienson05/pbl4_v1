@@ -38,12 +38,18 @@ MainWindow::MainWindow(QWidget *parent)
     connect(header, &HeaderWidget::minimizeRequested, this, &MainWindow::onMinimizeRequested);
     connect(header, &HeaderWidget::maximizeRequested, this, &MainWindow::onMaximizeRequested);
     connect(header, &HeaderWidget::closeRequested, this, &MainWindow::onCloseRequested);
+    connect(header, &HeaderWidget::saveFileRequested, // <-- Tín hiệu từ HeaderWidget
+            this, &MainWindow::saveFileRequested); // <-- Chuyển tiếp (forward) lên MainWindow
+    connect(header, &HeaderWidget::openFileRequested,
+            this, &MainWindow::openFileRequested);
 
     // --- Forward signal từ WelcomePage sang Controller ---
     connect(welcomePage, &WelcomePage::interfaceSelected,
             this, &MainWindow::interfaceSelected);
     connect(welcomePage, &WelcomePage::openFileRequested,
             this, &MainWindow::openFileRequested);
+
+
 
     // --- Forward signal từ CapturePage sang Controller ---
     connect(capturePage, &CapturePage::onRestartCaptureClicked,

@@ -2,23 +2,31 @@
 #include "../Core/Capture/InterfaceManager.hpp"
 #include <QDebug>
 #include <QDateTime>
+#include <QFileDialog>     // <-- THÊM MỚI
+#include <QMessageBox>     // <-- THÊM MỚI
+#include <QDir>            // <-- THÊM MỚI
+#include <QCoreApplication> // <-- THÊM MỚI
+#include <pcap.h>          // <-- THÊM MỚI (Cần cho việc Save)
 
 AppController::AppController(MainWindow *mainWindow, QObject *parent)
     : QObject(parent),
     m_mainWindow(mainWindow)
-// m_currentDisplayFilter("") // <-- ĐÃ XÓA
 {
     // --- Khởi tạo Core ---
     m_captureEngine = new CaptureEngine(this);
-
-    // --- THÊM MỚI: Khởi tạo Bộ máy Lọc ---
     m_filterEngine = new DisplayFilterEngine(this);
-
     loadInterfaces();
 
     // --- Connect signal từ MainWindow (forward từ Page) ---
     connect(m_mainWindow, &MainWindow::interfaceSelected, this, &AppController::onInterfaceSelected);
     connect(m_mainWindow, &MainWindow::openFileRequested, this, &AppController::onOpenFileRequested);
+
+    // --- THÊM MỚI: Kết nối tín hiệu Save ---
+    // (Giả sử MainWindow cũng forward tín hiệu 'saveFileRequested'
+    //  giống như 'openFileRequested' từ FileMenu)
+    connect(m_mainWindow, &MainWindow::saveFileRequested, // <-- TÊN SIGNAL MỚI (từ FileMenu)
+            this, &AppController::onSaveFileRequested);
+
     connect(m_mainWindow, &MainWindow::onRestartCaptureClicked, this, &AppController::onRestartCaptureClicked);
     connect(m_mainWindow, &MainWindow::onStopCaptureClicked, this, &AppController::onStopCaptureClicked);
     connect(m_mainWindow, &MainWindow::onPauseCaptureClicked, this, &AppController::onPauseCaptureClicked);
@@ -30,11 +38,7 @@ AppController::AppController(MainWindow *mainWindow, QObject *parent)
     // --- Connect TÍN HIỆU (Signal) của AppController VỚI (Slot) của MainWindow ---
     connect(this, &AppController::displayNewPacket, m_mainWindow, &MainWindow::addPacketToTable);
     connect(this, &AppController::clearPacketTable, m_mainWindow, &MainWindow::clearPacketTable);
-
-    // --- THÊM MỚI: Kết nối tín hiệu Lỗi Filter với MainWindow ---
-    // (Bạn sẽ cần thêm slot 'showFilterError' vào MainWindow)
-    connect(this, &AppController::displayFilterError,
-            m_mainWindow, &MainWindow::showFilterError);
+    connect(this, &AppController::displayFilterError, m_mainWindow, &MainWindow::showFilterError);
 }
 
 void AppController::onInterfaceSelected(const QString &interfaceName, const QString &filterText)
@@ -42,7 +46,7 @@ void AppController::onInterfaceSelected(const QString &interfaceName, const QStr
     qDebug() << "Interface selected:" << interfaceName << "Filter:" << filterText;
 
     m_allPackets.clear();
-    m_filterEngine->setFilter(""); // <-- Reset bộ lọc BPF
+    m_filterEngine->setFilter("");
     emit clearPacketTable();
 
     m_captureEngine->setInterface(interfaceName);
@@ -52,18 +56,122 @@ void AppController::onInterfaceSelected(const QString &interfaceName, const QStr
     m_mainWindow->showCapturePage();
 }
 
+/**
+ * @brief (ĐÃ CẬP NHẬT) Xử lý khi người dùng chọn "Open File"
+ */
 void AppController::onOpenFileRequested()
 {
     qDebug() << "Open file requested";
-    // TODO: mở file pcap và load vào Core → cập nhật UI
+
+    m_captureEngine->stopCapture();
+
+    QString defaultDir = QCoreApplication::applicationDirPath() + "/FileSave";
+    QDir dir(defaultDir);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+    QString filePath = QFileDialog::getOpenFileName(
+        m_mainWindow,
+        tr("Open Pcap File"),
+        defaultDir,
+        tr("Pcap Files (*.pcap *.pcapng)")
+        );
+
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    m_allPackets.clear();
+    m_filterEngine->setFilter("");
+    emit clearPacketTable();
+
+    // --- ĐÃ SỬA: BỎ COMMENT DÒNG NÀY ---
+    m_captureEngine->startCaptureFromFile(filePath);
+    // --- KẾT THÚC SỬA ---
+
+    m_mainWindow->showCapturePage();
 }
+
+/**
+ * @brief (ĐÃ CẬP NHẬT) Lưu vào file tại thư mục mặc định
+ */
+void AppController::onSaveFileRequested()
+{
+    qDebug() << "Save file requested";
+
+    // 1. Kiểm tra xem có gì để lưu không
+    if (m_allPackets.isEmpty()) {
+        QMessageBox::warning(m_mainWindow, "Save Error", "There are no packets to save.");
+        return;
+    }
+
+    // 2. --- ĐÃ THAY ĐỔI: Tạo đường dẫn mặc định ---
+    QString defaultDir = QCoreApplication::applicationDirPath() + "/FileSave";
+    QDir dir(defaultDir);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+
+    // 3. Mở hộp thoại lưu file tại đường dẫn đó
+    QString filePath = QFileDialog::getSaveFileName(
+        m_mainWindow,
+        tr("Save File As..."),
+        defaultDir + "/capture.pcap", // <-- Đường dẫn + tên file mặc định
+        tr("Pcap Files (*.pcap)")
+        );
+    // --- KẾT THÚC THAY ĐỔI ---
+
+    if (filePath.isEmpty()) {
+        return; // Người dùng nhấn Cancel
+    }
+
+    // 3. Mở pcap dumper (bộ ghi)
+    pcap_t *pcap_handle = pcap_open_dead(DLT_EN10MB, 65535);
+    if (!pcap_handle) {
+        QMessageBox::critical(m_mainWindow, "Save Error", "Could not create pcap handle for writing.");
+        return;
+    }
+
+    pcap_dumper_t *dumper = pcap_dump_open(pcap_handle, filePath.toStdString().c_str());
+    if (!dumper) {
+        QMessageBox::critical(m_mainWindow, "Save Error", QString("Could not open file for writing: %1").arg(pcap_geterr(pcap_handle)));
+        pcap_close(pcap_handle);
+        return;
+    }
+
+    // 4. Lặp qua "danh sách chính" và ghi (dump) từng gói tin
+    for (const PacketData &packet : m_allPackets) {
+        pcap_pkthdr header;
+
+        header.ts.tv_sec = packet.timestamp.tv_sec;
+        header.ts.tv_usec = packet.timestamp.tv_nsec / 1000;
+        header.caplen = packet.cap_length;
+        header.len = packet.wire_length;
+
+        pcap_dump(
+            reinterpret_cast<u_char*>(dumper),
+            &header,
+            packet.raw_packet.data()
+            );
+    }
+
+    // 5. Đóng file
+    pcap_dump_close(dumper);
+    pcap_close(pcap_handle);
+
+    QMessageBox::information(m_mainWindow, "Save Successful",
+                             QString("Successfully saved %1 packets to %2")
+                                 .arg(m_allPackets.size())
+                                 .arg(filePath));
+}
+
 
 void AppController::onRestartCaptureClicked()
 {
     qDebug() << "Restart capture";
 
     m_allPackets.clear();
-    m_filterEngine->setFilter(""); // <-- Reset bộ lọc BPF
+    m_filterEngine->setFilter("");
     emit clearPacketTable();
 
     m_captureEngine->stopCapture();
@@ -86,29 +194,21 @@ void AppController::onPauseCaptureClicked()
     }
 }
 
-/**
- * @brief (ĐÃ THAY ĐỔI) Được gọi khi nhấn "Apply" trên CapturePage
- */
 void AppController::onApplyFilterClicked(const QString &filterText)
 {
     qDebug() << "Apply BPF display filter:" << filterText;
 
-    // 1. Biên dịch (compile) filter mới bằng BPF
     if (!m_filterEngine->setFilter(filterText))
     {
-        // 2. Nếu lỗi cú pháp, gửi tín hiệu lỗi lên UI
         emit displayFilterError(m_filterEngine->getLastError());
-
-        // (Chúng ta xóa bộ lọc nếu nó bị lỗi)
         m_filterEngine->setFilter("");
     }
 
-    // 3. Lọc lại toàn bộ bảng
     refreshFullDisplay();
 }
 
 /**
- * @brief (ĐÃ THAY ĐỔI) Được gọi khi Core bắt được 1 gói tin
+ * @brief (Đang dùng phiên bản 1-1, sẽ gây lag)
  */
 void AppController::onPacketCaptured(const PacketData &packet)
 {
@@ -123,7 +223,7 @@ void AppController::onPacketCaptured(const PacketData &packet)
 }
 
 /**
- * @brief (ĐÃ THAY ĐỔI) Lọc lại toàn bộ danh sách
+ * @brief (Đang dùng phiên bản 1-1, sẽ gây lag)
  */
 void AppController::refreshFullDisplay()
 {

@@ -45,7 +45,7 @@ void CapturePage::setupUI()
 
     // --- Thanh filter ---
     QHBoxLayout *filterLayout = new QHBoxLayout;
-    filterLineEdit->setPlaceholderText("Enter display filter (e.g., ip.addr == 192.168.1.1)");
+    filterLineEdit->setPlaceholderText("Enter display filter");
     filterLayout->addWidget(filterLineEdit);
     filterLayout->addWidget(applyFilterButton);
 

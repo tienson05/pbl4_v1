@@ -124,3 +124,50 @@ void CaptureEngine::emitPacket(const PacketData& pkt) {
         emit packetCaptured(pkt);
     }, Qt::QueuedConnection);
 }
+void CaptureEngine::fileReadingLoop()
+{
+    char errbuf[PCAP_ERRBUF_SIZE];
+    m_pcapHandle = pcap_open_offline(m_interface.toStdString().c_str(), errbuf);
+    if (!m_pcapHandle) {
+        emit errorOccurred(QString("pcap_open_offline error: %1").arg(errbuf));
+        return;
+    }
+
+    struct pcap_pkthdr* header;
+    const u_char* data;
+    int res;
+    Parser parser;
+
+    while (m_isRunning && (res = pcap_next_ex(m_pcapHandle, &header, &data)) >= 0)
+    {
+        if (res == 1) { // 1. Đọc được gói tin
+            PacketData pkt;
+            if (parser.parse(&pkt, data, header->caplen)) {
+                pkt.cap_length = header->caplen;
+                pkt.wire_length = header->len;
+                pkt.packet_id = ++m_packetCounter;
+
+                // GỬI TỪNG GÓI MỘT (SẼ GÂY LAG)
+                emitPacket(pkt);
+            }
+        }
+        else if (res == -2) { // Hết file
+            break;
+        }
+    } // Kết thúc while
+    closePcap();
+}
+void CaptureEngine::startCaptureFromFile(const QString &filePath)
+{
+    if (m_isRunning) stopCapture();
+
+    m_interface = filePath;
+    m_captureFilter = "";
+    m_isRunning = true;
+    m_isPaused = false;
+    m_packetCounter = 0;
+
+    QThread* thread = QThread::create([this]() { fileReadingLoop(); });
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    thread->start();
+}

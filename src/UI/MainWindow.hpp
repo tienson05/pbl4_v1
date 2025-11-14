@@ -58,6 +58,7 @@ signals:
     void openFileRequested();
 
     // Signals từ CapturePage
+    void saveFileRequested();
     void onRestartCaptureClicked();
     void onStopCaptureClicked();
     void onPauseCaptureClicked();

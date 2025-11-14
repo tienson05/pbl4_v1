@@ -23,6 +23,7 @@ target_link_libraries(UILib
         PagesLib        # từ add_library trong src/UI/Pages/CMakeLists.txt
         HeaderLib       # từ src/UI/Header/
         WidgetsLib      # từ src/UI/Widgets/
+        CommonLib
         CaptureLib
         Qt6::Widgets
 )

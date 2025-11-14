@@ -14,6 +14,7 @@ public:
 
     void setInterface(const QString &interfaceName);
     void setCaptureFilter(const QString &filter);
+    void startCaptureFromFile(const QString &filePath);
     void setDisplayFilter(const QString &filter);
     void startCapture();
     void stopCapture();
@@ -27,6 +28,7 @@ signals:
 
 private slots:
     void captureLoop();
+    void fileReadingLoop();
 
 private:
     // --- pcap ---
@@ -39,8 +41,8 @@ private:
     QString m_displayFilter;
 
     // --- state ---
-    bool m_isPaused = false;
-    bool m_isRunning = false;
+    volatile bool m_isPaused = false;
+    volatile bool m_isRunning = false;
     int m_packetCounter = 0;
 
     // --- helper ---

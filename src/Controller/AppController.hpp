@@ -34,6 +34,7 @@ private:
 private slots:
     void onInterfaceSelected(const QString &interfaceName, const QString &filterText);
     void onOpenFileRequested();
+    void onSaveFileRequested();
     void onRestartCaptureClicked();
     void onStopCaptureClicked();
     void onPauseCaptureClicked();
