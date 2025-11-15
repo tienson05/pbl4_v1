@@ -82,16 +82,14 @@ bool Parser::parse(PacketData* pkt, const uint8_t* data, size_t len) {
                 size_t tcp_hdr_len = pkt->tcp.data_offset * 4;
                 ptr += tcp_hdr_len; remaining -= tcp_hdr_len;
                 TCPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->tcp);
-                ApplicationParser::parse(pkt->app, ptr, remaining, pkt->tcp.src_port, pkt->tcp.dest_port);
-            }
+ApplicationParser::parse(pkt->app, ptr, remaining, pkt->tcp.src_port, pkt->tcp.dest_port, true);            }
         }
         else if (proto == 17 && remaining >= 8) { // UDP
             pkt->is_udp = UDPParser::parse(pkt->udp, ptr, remaining);
             if (pkt->is_udp) {
                 ptr += 8; remaining -= 8;
                 UDPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->udp);
-                ApplicationParser::parse(pkt->app, ptr, remaining, pkt->udp.src_port, pkt->udp.dest_port);
-            }
+ApplicationParser::parse(pkt->app, ptr, remaining, pkt->udp.src_port, pkt->udp.dest_port, false);            }
         }
         else if (proto == 1 && remaining >= 4) { // ICMPv4
             pkt->is_icmp = ICMPParser::parse(pkt->icmp, ptr, remaining);
@@ -121,8 +119,7 @@ bool Parser::parse(PacketData* pkt, const uint8_t* data, size_t len) {
                     ptr += tcp_hdr_len; remaining -= tcp_hdr_len;
                     TCPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->tcp);
                      // --- KÍCH HOẠT TẦNG 7 ---
-                    ApplicationParser::parse(pkt->app, ptr, remaining, pkt->tcp.src_port, pkt->tcp.dest_port);
-                }
+ApplicationParser::parse(pkt->app, ptr, remaining, pkt->tcp.src_port, pkt->tcp.dest_port, true);                }
             }
             else if (proto == 17 && remaining >= 8) { // UDP
                 pkt->is_udp = UDPParser::parse(pkt->udp, ptr, remaining);
@@ -130,8 +127,7 @@ bool Parser::parse(PacketData* pkt, const uint8_t* data, size_t len) {
                     ptr += 8; remaining -= 8;
                     UDPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->udp);
                      // --- KÍCH HOẠT TẦNG 7 ---
-                    ApplicationParser::parse(pkt->app, ptr, remaining, pkt->udp.src_port, pkt->udp.dest_port);
-                }
+ApplicationParser::parse(pkt->app, ptr, remaining, pkt->udp.src_port, pkt->udp.dest_port, false);                }
             }
             else if (proto == 58 && remaining >= 4) { // 58 = ICMPv6
                 pkt->is_icmp = ICMPParser::parse(pkt->icmp, ptr, remaining);

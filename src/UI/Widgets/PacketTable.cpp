@@ -14,6 +14,7 @@
 #include <iomanip>
 #include <sstream>
 #include <QRegularExpression>
+
 PacketTable::PacketTable(QWidget *parent)
     : QWidget(parent)
 {
@@ -28,22 +29,26 @@ void PacketTable::setupUI()
 
     // === Bảng gói tin ===
     packetList = new QTableWidget(this);
-    packetList->setColumnCount(7); // 6 cột hiển thị + 1 cột ẩn
-    QStringList headers = {"No.", "Time", "Source", "Destination", "Protocol", "Info"};
-    packetList->setHorizontalHeaderLabels(headers);
-    // packetList->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    packetList->horizontalHeader()->setStretchLastSection(true);
-    // 2. Yêu cầu cột CUỐI CÙNG (cột 5, "Info") tự động co giãn
-    // packetList->horizontalHeader()->setStretchLastSection(true);
 
-    // 3. (Tùy chọn) Đặt kích thước cố định/nhỏ cho các cột khác
-    // packetList->setColumnWidth(0, 60);  // Cột "No."
-    // packetList->setColumnWidth(1, 100); // Cột "Time"
-    // packetList->setColumnWidth(4, 80);  // Cột "Protocol"
+    packetList->setColumnCount(8); // 7 cột hiển thị + 1 cột ẩn
+    QStringList headers = {"No.", "Time", "Source", "Destination", "Protocol", "Length", "Info"}; // Thêm "Length"
+
+    packetList->setHorizontalHeaderLabels(headers);
+    packetList->horizontalHeader()->setStretchLastSection(true); // Cột "Info" (cuối cùng) co giãn
+
+    // (TÙY CHỈNH) Thêm resize mode cho các cột
+    packetList->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents); // No.
+    packetList->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Interactive); // Time
+    packetList->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Interactive); // Source
+    packetList->horizontalHeader()->setSectionResizeMode(3, QHeaderView::Interactive); // Destination
+    packetList->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents); // Protocol
+    packetList->horizontalHeader()->setSectionResizeMode(5, QHeaderView::ResizeToContents); // Cột Length
 
     packetList->setSelectionBehavior(QAbstractItemView::SelectRows);
     packetList->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    packetList->hideColumn(6); // Ẩn cột Length (nếu không dùng)
+
+    packetList->hideColumn(7); // Ẩn cột 7 (cột chứa data ẩn)
+
     packetList->verticalHeader()->setVisible(false);
 
     // === Chi tiết gói tin (Tree) ===
@@ -79,7 +84,6 @@ void PacketTable::clearData()
     packetBytes->clear();       // Xóa hex dump
 }
 
-// --- HÀM LOGIC LỌC MỚI (STATIC) ---
 // === THÊM GÓI TIN (ĐÃ SỬA) ===
 void PacketTable::addPacket(const PacketData &packet)
 {
@@ -87,10 +91,8 @@ void PacketTable::addPacket(const PacketData &packet)
     packetList->insertRow(row);
 
     // --- TẠO CÁC MỤC (ITEMS) ---
-    // CỘT 0: No.
     QTableWidgetItem* noItem = new QTableWidgetItem(QString::number(packet.packet_id));
 
-    // CỘT 1: Time
     char timeStr[64];
     struct tm *tm_info = localtime(&packet.timestamp.tv_sec);
     strftime(timeStr, sizeof(timeStr), "%H:%M:%S", tm_info);
@@ -98,18 +100,21 @@ void PacketTable::addPacket(const PacketData &packet)
                        .arg(timeStr)
                        .arg(packet.timestamp.tv_nsec / 1000000, 3, 10, QChar('0'));
 
-    // CỘT 4: Protocol (Lấy sớm để dùng cho màu)
     QString proto = getProtocolName(packet);
+
+    QTableWidgetItem* lengthItem = new QTableWidgetItem(QString::number(packet.wire_length));
 
     // TẠO DANH SÁCH CÁC MỤC HIỂN THỊ
     QList<QTableWidgetItem*> items = {
-        noItem,                                     // 0
+        noItem,                                 // 0
         new QTableWidgetItem(time),                 // 1
-        new QTableWidgetItem(getSourceAddress(packet)),    // 2
+        new QTableWidgetItem(getSourceAddress(packet)),   // 2
         new QTableWidgetItem(getDestinationAddress(packet)),// 3
         new QTableWidgetItem(proto),                // 4
-        new QTableWidgetItem(getInfo(packet))       // 5
+        lengthItem,                                 // 5 (THÊM MỚI)
+        new QTableWidgetItem(getInfo(packet))       // 6
     };
+    // -------------------
 
     // --- LOGIC TÔ MÀU MỚI ---
     QColor color;
@@ -134,11 +139,11 @@ void PacketTable::addPacket(const PacketData &packet)
     }
     // --- KẾT THÚC LOGIC TÔ MÀU ---
 
-    // CỘT ẨN (6): Lưu toàn bộ PacketData
+    // CỘT ẨN (7): Lưu toàn bộ PacketData
     QTableWidgetItem* hidden = new QTableWidgetItem();
     hidden->setData(Qt::UserRole, QVariant::fromValue(packet));
     hidden->setFlags(Qt::NoItemFlags);
-    packetList->setItem(row, 6, hidden);
+    packetList->setItem(row, 7, hidden); // (SỬA ĐỔI) Đặt vào cột 7
 
     // Scroll xuống
     packetList->scrollToBottom();
@@ -148,7 +153,9 @@ void PacketTable::addPacket(const PacketData &packet)
 void PacketTable::onPacketRowSelected(QTableWidgetItem *item)
 {
     int row = item->row();
-    QTableWidgetItem *hidden = packetList->item(row, 6);
+
+    QTableWidgetItem *hidden = packetList->item(row, 7); // (SỬA ĐỔI) Lấy từ cột 7
+
     if (!hidden) return;
 
     PacketData packet = hidden->data(Qt::UserRole).value<PacketData>();
@@ -160,7 +167,6 @@ void PacketTable::onPacketRowSelected(QTableWidgetItem *item)
 void PacketTable::showPacketDetails(const PacketData &packet)
 {
     packetDetails->clear();
-
     QTreeWidgetItem *root = new QTreeWidgetItem(packetDetails);
     root->setText(0, QString("Frame %1: %2 bytes")
                          .arg(packet.packet_id)
@@ -185,7 +191,6 @@ void PacketTable::showPacketDetails(const PacketData &packet)
         addField(vlan, "VLAN ID", QString::number(packet.vlan.tci & 0xFFF));
     }
 
-    // IP / ARP
     if (packet.is_ipv4) {
         QTreeWidgetItem *ip = new QTreeWidgetItem(root);
         ip->setText(0, "Internet Protocol Version 4");
@@ -215,7 +220,7 @@ void PacketTable::showPacketDetails(const PacketData &packet)
 
     // TCP / UDP
     if (packet.is_tcp) {
-        QTreeWidgetItem *tcp = new QTreeWidgetItem(root);
+        QTreeWidgetItem *tcp = new QTreeWidgetItem(root); // <-- 'tcp' là QTreeWidget*
         tcp->setText(0, "Transmission Control Protocol");
         addField(tcp, "Source Port", QString::number(packet.tcp.src_port));
         addField(tcp, "Destination Port", QString::number(packet.tcp.dest_port));
@@ -228,6 +233,17 @@ void PacketTable::showPacketDetails(const PacketData &packet)
         addField(tcp, "Flags", flags.trimmed().isEmpty() ? "None" : flags.trimmed());
         addField(tcp, "Sequence Number", QString::number(packet.tcp.seq_num));
         addField(tcp, "Window Size", QString::number(packet.tcp.window));
+
+        // --- (THÊM MỚI) Hiển thị Options trong Tree ---
+        // (Kiểm tra xem parser đã tìm thấy timestamp chưa)
+        if (packet.tcp.has_timestamp) {
+            // Tạo một nhánh con "Options", cha của nó là 'tcp' (QTreeWidgetItem)
+            QTreeWidgetItem *ts = new QTreeWidgetItem(tcp);
+            ts->setText(0, "Options: (Timestamps)");
+            addField(ts, "Timestamp value", QString::number(packet.tcp.ts_val));
+            addField(ts, "Timestamp echo reply", QString::number(packet.tcp.ts_ecr));
+        }
+        // --- KẾT THÚC THÊM MỚI ---
     }
     else if (packet.is_udp) {
         QTreeWidgetItem *udp = new QTreeWidgetItem(root);
@@ -266,12 +282,8 @@ void PacketTable::showHexDump(const PacketData &packet)
     std::ostringstream oss;
     const auto& data = packet.raw_packet;
     size_t len = data.size();
-
     for (size_t i = 0; i < len; i += 16) {
-        // Offset
         oss << QString("%1").arg(i, 8, 16, QChar('0')).toUpper().toStdString() << "  ";
-
-        // Hex
         for (size_t j = 0; j < 16; ++j) {
             if (i + j < len)
                 oss << std::hex << std::setw(2) << std::setfill('0') << (int)data[i + j] << " ";
@@ -279,8 +291,6 @@ void PacketTable::showHexDump(const PacketData &packet)
                 oss << "   ";
             if (j == 7) oss << " ";
         }
-
-        // ASCII
         oss << " ";
         for (size_t j = 0; j < 16 && i + j < len; ++j) {
             char c = data[i + j];
@@ -288,7 +298,6 @@ void PacketTable::showHexDump(const PacketData &packet)
         }
         oss << "\n";
     }
-
     packetBytes->setText(QString::fromStdString(oss.str()));
 }
 
@@ -298,27 +307,19 @@ QString PacketTable::getSourceAddress(const PacketData &p)
     if (p.is_arp) return ipToString(p.arp.sender_ip);
     if (p.is_ipv4) return ipToString(p.ipv4.src_ip);
     if (p.is_ipv6) return ipv6ToString(p.ipv6.src_ip);
-
     return macToString(p.eth.src_mac);
 }
 
 QString PacketTable::getDestinationAddress(const PacketData &p)
 {
-    if (p.is_arp) return ipToString(p.arp.target_ip); // Hiển thị IP người nhận ARP
+    if (p.is_arp) return ipToString(p.arp.target_ip);
     if (p.is_ipv4) return ipToString(p.ipv4.dest_ip);
     if (p.is_ipv6) return ipv6ToString(p.ipv6.dest_ip);
-
     return macToString(p.eth.dest_mac);
 }
 
-/**
- * @brief (ĐÃ SỬA LỖI LOGIC)
- * Lấy tên giao thức. Ưu tiên Tầng 7 (Application) trước,
- * sau đó mới lùi về Tầng 4 (Transport), rồi Tầng 3 (Network).
- */
 QString PacketTable::getProtocolName(const PacketData &p)
 {
-    // (Đã sửa: Ưu tiên Tầng 7)
     if (!p.app.protocol.empty()) {
         return QString::fromStdString(p.app.protocol); // "TLS", "HTTP", "DNS"
     }
@@ -331,56 +332,66 @@ QString PacketTable::getProtocolName(const PacketData &p)
 
 QString PacketTable::getInfo(const PacketData &p)
 {
-    // 1. (Ưu tiên thông tin Tầng 7 - Application)
     if (!p.app.info.empty()) {
-        return QString::fromStdString(p.app.info); // "Transport Layer Security"
+        return QString::fromStdString(p.app.info);
     }
+
     if (p.app.is_http_request) {
         return QString::fromStdString(p.app.http_method + " " + p.app.http_path);
     }
     if (p.app.is_http_response) {
         return QString("HTTP %1").arg(p.app.http_status_code);
     }
-    // (Lưu ý: Logic DNS đã được xử lý bởi app.info,
-    //  nhưng chúng ta có thể giữ lại để dự phòng)
     if (p.is_udp && p.app.protocol == "DNS") {
         return p.app.is_dns_query ? "DNS Query" : "DNS Response";
     }
 
-    // 2. (Nếu không, lùi về thông tin Tầng 4 - Transport)
     if (p.is_tcp) {
-        // Ví dụ: "443 → 50115 [ACK] Seq=1 Ack=1 Win=485"
         QString info = QString("%1 → %2 ")
                            .arg(p.tcp.src_port)
                            .arg(p.tcp.dest_port);
-
         QString f;
         if (p.tcp.flags & TCPHeader::SYN) f += "SYN, ";
         if (p.tcp.flags & TCPHeader::ACK) f += "ACK, ";
         if (p.tcp.flags & TCPHeader::FIN) f += "FIN, ";
         if (p.tcp.flags & TCPHeader::RST) f += "RST, ";
         if (p.tcp.flags & TCPHeader::PSH) f += "PSH, ";
-
         if (!f.isEmpty()) {
-            f.chop(2); // Xóa dấu ", " cuối cùng
+            f.chop(2);
             info += QString("[%1] ").arg(f);
         }
-
         info += QString("Seq=%1 Ack=%2 Win=%3")
                     .arg(p.tcp.seq_num)
                     .arg(p.tcp.ack_num)
                     .arg(p.tcp.window);
+
+        int payload_len = 0;
+        if (p.is_ipv4) {
+            int ip_total_len = p.ipv4.total_length;
+            int ip_header_len = p.ipv4.ihl * 4;
+            int tcp_header_len = p.tcp.data_offset * 4;
+            payload_len = ip_total_len - ip_header_len - tcp_header_len;
+        }
+
+        info += QString(" Len=%1").arg(payload_len);
+
+        // --- (THÊM MỚI) Hiển thị TSval nếu có ---
+        if (p.tcp.has_timestamp) {
+            info += QString(" TSval=%1 TSecr=%2")
+            .arg(p.tcp.ts_val)
+                .arg(p.tcp.ts_ecr);
+        }
+        // --- KẾT THÚC THÊM MỚI ---
+
         return info;
     }
     if (p.is_udp) {
-        // Ví dụ: "5353 → 5353 Len=120"
         return QString("%1 → %2 Len=%3")
             .arg(p.udp.src_port)
             .arg(p.udp.dest_port)
-            .arg(p.udp.length - 8); // (Length của UDP payload = total - 8 byte header)
+            .arg(p.udp.length - 8);
     }
 
-    // 3. (Nếu không, lùi về thông tin Tầng 3 - Network)
     if (p.is_arp) {
         if (p.arp.opcode == 1) { // Request
             return QString("Who has %1? Tell %2")
@@ -393,11 +404,9 @@ QString PacketTable::getInfo(const PacketData &p)
         }
     }
     if (p.is_icmp) {
-        // (Bạn có thể thêm logic lấy 'type' ở đây, ví dụ: "Echo (ping) request")
         return "ICMP Packet";
     }
 
-    // 4. (Mặc định, trả về độ dài)
     return QString("Len=%1").arg(p.cap_length);
 }
 
@@ -418,19 +427,13 @@ QString PacketTable::macToString(const std::array<uint8_t, 6>& mac)
         .arg(mac[5], 2, 16, QChar('0')).toUpper();
 }
 
-/**
- * @brief (ĐÃ SỬA LỖI) Chuyển đổi IP (host order) sang chuỗi.
- */
 QString PacketTable::ipToString(uint32_t ip_host_order)
 {
-    // IP `uint32_t` từ parser đã ở dạng Host Order (Little Endian)
-    // Ví dụ: 192.168.1.9 là 0x0901A8C0
-    // Chúng ta cần in các byte theo thứ tự ngược lại
     return QString("%1.%2.%3.%4")
-        .arg((ip_host_order) & 0xFF)       // Byte 1 (C0 -> 192)
-        .arg((ip_host_order >> 8)  & 0xFF) // Byte 2 (A8 -> 168)
-        .arg((ip_host_order >> 16) & 0xFF) // Byte 3 (01 -> 1)
-        .arg((ip_host_order >> 24) & 0xFF);  // Byte 4 (09 -> 9)
+    .arg((ip_host_order) & 0xFF)
+        .arg((ip_host_order >> 8)  & 0xFF)
+        .arg((ip_host_order >> 16) & 0xFF)
+        .arg((ip_host_order >> 24) & 0xFF);
 }
 
 QString PacketTable::ipv6ToString(const std::array<uint8_t, 16>& ip)

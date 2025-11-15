@@ -5,6 +5,13 @@
 #include <sstream>
 #include <iomanip>
 
+// --- (THÊM MỚI) Định nghĩa các hằng số TCP Option Kind ---
+#define TCPOPT_EOL 0
+#define TCPOPT_NOP 1
+#define TCPOPT_TIMESTAMP 8
+// -----------------------------------------
+
+
 // --- Các hàm trợ giúp nội bộ ---
 
 static void appendTree(std::string& tree, int depth, const std::string& line) {
@@ -35,6 +42,62 @@ static std::string getPortName(uint16_t port) {
     }
 }
 
+// --- (THÊM MỚI) Hàm Phân tích TCP Options ---
+void TCPParser::parseTCPOptions(TCPHeader& tcp, const uint8_t* options_data, size_t options_len)
+{
+    const uint8_t* ptr = options_data;
+    size_t remaining = options_len;
+
+    // (Reset cờ timestamp trước khi bắt đầu)
+    tcp.has_timestamp = false;
+
+    while (remaining > 0)
+    {
+        uint8_t kind = ptr[0]; // Lấy 'Kind'
+
+        if (kind == TCPOPT_EOL) { // End of Option List
+            return; // Kết thúc
+        }
+
+        if (kind == TCPOPT_NOP) { // No-Operation (Padding)
+            ptr++;
+            remaining--;
+            continue; // Chuyển sang byte tiếp theo
+        }
+
+        // Nếu không phải EOL hay NOP, nó phải có 1 byte Length
+        if (remaining < 2) return; // Lỗi (option bị cắt cụt)
+        uint8_t len = ptr[1]; // Lấy 'Length'
+
+        // Kiểm tra độ dài có hợp lệ không
+        if (len < 2 || len > remaining) {
+            return; // Lỗi (độ dài không hợp lệ)
+        }
+
+        // --- KIỂM TRA TIMESTAMP ---
+        // (Kind = 8, Length = 10 (1 byte Kind + 1 byte Len + 4 byte TSval + 4 byte TSecr))
+        if (kind == TCPOPT_TIMESTAMP && len == 10)
+        {
+            tcp.has_timestamp = true;
+
+            // Trích xuất 4 byte TSval (Network Order)
+            uint32_t ts_val_net;
+            memcpy(&ts_val_net, ptr + 2, 4);
+            tcp.ts_val = ntohl(ts_val_net); // Chuyển sang Host Order
+
+            // Trích xuất 4 byte TSecr (Network Order)
+            uint32_t ts_ecr_net;
+            memcpy(&ts_ecr_net, ptr + 6, 4);
+            tcp.ts_ecr = ntohl(ts_ecr_net); // Chuyển sang Host Order
+        }
+
+        // Chuyển sang Option tiếp theo
+        ptr += len;
+        remaining -= len;
+    }
+}
+
+
 // --- Triển khai (Implementation) ---
 
 bool TCPParser::parse(TCPHeader& tcp, const uint8_t* data, size_t len) {
@@ -62,11 +125,23 @@ bool TCPParser::parse(TCPHeader& tcp, const uint8_t* data, size_t len) {
         return false;
     }
 
-    // Xử lý TCP Options (nếu có)
     size_t header_len_bytes = tcp.data_offset * 4;
+
+    // (THÊM MỚI) Kiểm tra xem header có bị cắt cụt không
+    if (len < header_len_bytes) {
+        return false; // Gói tin bị cắt
+    }
+
+    // Xử lý TCP Options (nếu có)
     if (header_len_bytes > 20) {
-        tcp.options_len = std::min((size_t)(header_len_bytes - 20), (size_t)tcp.options.size());
-        memcpy(tcp.options.data(), data + 20, tcp.options_len);
+        tcp.options_len = (uint8_t)(header_len_bytes - 20);
+
+        // (SỬA ĐỔI) Thay vì copy, chúng ta gọi hàm phân tích
+        // memcpy(tcp.options.data(), data + 20, tcp.options_len);
+
+        // --- GỌI HÀM PHÂN TÍCH MỚI ---
+        parseTCPOptions(tcp, data + 20, tcp.options_len);
+
     } else {
         tcp.options_len = 0;
     }
@@ -98,4 +173,11 @@ void TCPParser::appendTreeView(std::string& tree, int depth, const TCPHeader& tc
     appendTree(tree, depth, "Window Size: " + std::to_string(tcp.window));
     appendTree(tree, depth, "Checksum: " + to_hex(tcp.checksum));
     appendTree(tree, depth, "Urgent Pointer: " + std::to_string(tcp.urgent_pointer));
+
+    // --- (THÊM MỚI) Hiển thị Timestamp trong Packet Details ---
+    if (tcp.has_timestamp) {
+        appendTree(tree, depth, "Options: (Timestamps)");
+        appendTree(tree, depth + 1, "Timestamp value: " + std::to_string(tcp.ts_val));
+        appendTree(tree, depth + 1, "Timestamp echo reply: " + std::to_string(tcp.ts_ecr));
+    }
 }

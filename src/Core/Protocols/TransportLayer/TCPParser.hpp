@@ -23,6 +23,17 @@ public:
      * @param tcp Struct TCPHeader đã được điền.
      */
     static void appendTreeView(std::string& tree, int depth, const TCPHeader& tcp);
+
+private:
+    // --- (THÊM MỚI) ---
+    /**
+     * @brief Hàm helper (nội bộ) để phân tích các tùy chọn TCP.
+     * @param tcp Struct TCPHeader (để điền TSval, TSecr).
+     * @param options_data Con trỏ đến đầu của mảng options.
+     * @param options_len Độ dài của mảng options (tính bằng byte).
+     */
+    static void parseTCPOptions(TCPHeader& tcp, const uint8_t* options_data, size_t options_len);
+    // --- KẾT THÚC THÊM MỚI ---
 };
 
 #endif // TCP_PARSER_HPP
