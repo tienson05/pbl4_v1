@@ -5,6 +5,10 @@
 #include "../Core/Capture/CaptureEngine.hpp"
 #include "../Common/PacketData.hpp"
 #include "../Controller/ControllerLib/DisplayFilterEngine.hpp"
+#include "StatisticsManager.hpp"
+
+// (KHAI BÁO TRƯỚC)
+class StatisticsDialog;
 
 class AppController : public QObject {
     Q_OBJECT
@@ -12,12 +16,11 @@ public:
     explicit AppController(MainWindow *mainWindow, QObject *parent = nullptr);
 
 signals:
+    // (Tín hiệu để cập nhật bảng)
     void displayNewPacket(const PacketData &packet);
     void clearPacketTable();
 
-    /**
-     * @brief (THÊM MỚI) Gửi lỗi cú pháp filter lên UI
-     */
+    // (Tín hiệu báo lỗi filter)
     void displayFilterError(const QString &errorText);
 
 private:
@@ -26,12 +29,15 @@ private:
     void loadInterfaces();
     void refreshFullDisplay();
 
-    // --- BIẾN THÀNH VIÊN ĐÃ THAY ĐỔI ---
     QList<PacketData> m_allPackets;
-    // QString m_currentDisplayFilter;
     DisplayFilterEngine *m_filterEngine;
+    StatisticsManager* m_statsManager;
+
+    // (Lưu con trỏ đến dialog duy nhất)
+    StatisticsDialog* m_statisticsDialog;
 
 private slots:
+    // Slots nhận từ UI
     void onInterfaceSelected(const QString &interfaceName, const QString &filterText);
     void onOpenFileRequested();
     void onSaveFileRequested();
@@ -39,5 +45,8 @@ private slots:
     void onStopCaptureClicked();
     void onPauseCaptureClicked();
     void onApplyFilterClicked(const QString &filterText);
+    void onStatisticsMenuClicked(); // Slot cho menu
+
+    // Slot nhận từ Core
     void onPacketCaptured(const PacketData &packet);
 };

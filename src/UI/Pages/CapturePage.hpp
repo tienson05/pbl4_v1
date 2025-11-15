@@ -19,6 +19,11 @@ signals:
     void onStopCaptureClicked();
     void onPauseCaptureClicked();
     void onApplyFilterClicked(const QString &filterText);
+    /**
+     * @brief (THÊM MỚI) Tín hiệu này được phát ra
+     * khi người dùng nhấn nút "Statistics".
+     */
+    void onStatisticsClicked();
 
 private:
     void setupUI();

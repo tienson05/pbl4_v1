@@ -42,6 +42,9 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::saveFileRequested); // <-- Chuyển tiếp (forward) lên MainWindow
     connect(header, &HeaderWidget::openFileRequested,
             this, &MainWindow::openFileRequested);
+    // Sửa dòng 45
+    connect(header, &HeaderWidget::analyzeStatisticsRequested, // <-- Tín hiệu ĐÚNG từ Header
+            this, &MainWindow::analyzeStatisticsRequested);   // <-- Tín hiệu ĐÚNG để forward lên
 
     // --- Forward signal từ WelcomePage sang Controller ---
     connect(welcomePage, &WelcomePage::interfaceSelected,
@@ -60,6 +63,8 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::onPauseCaptureClicked);
     connect(capturePage, &CapturePage::onApplyFilterClicked,
             this, &MainWindow::onApplyFilterClicked);
+    connect(capturePage, &CapturePage::onStatisticsClicked,
+            this, &MainWindow::analyzeStatisticsRequested);
 
     // Mặc định hiển thị WelcomePage
     showWelcomePage();

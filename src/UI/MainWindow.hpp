@@ -63,6 +63,7 @@ signals:
     void onStopCaptureClicked();
     void onPauseCaptureClicked();
     void onApplyFilterClicked(const QString &filterText); // <-- Filter hiển thị
+    void analyzeStatisticsRequested(); // <-- THÊM CÁI NÀY
 
 private:
     HeaderWidget *header;

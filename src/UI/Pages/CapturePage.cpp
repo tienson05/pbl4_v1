@@ -25,6 +25,8 @@ CapturePage::CapturePage(QWidget *parent)
     connect(applyFilterButton, &QPushButton::clicked, this, [=](){
         emit onApplyFilterClicked(filterLineEdit->text());
     });
+    connect(statisticsBtn, &QPushButton::clicked, this, &CapturePage::onStatisticsClicked);
+
 }
 
 void CapturePage::setupUI()

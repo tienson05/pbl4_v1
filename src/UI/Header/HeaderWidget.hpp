@@ -6,7 +6,6 @@ class HeaderWidget : public QWidget {
     Q_OBJECT
 public:
     explicit HeaderWidget(QWidget *parent = nullptr);
-
 signals:
     void minimizeRequested();
     void maximizeRequested();

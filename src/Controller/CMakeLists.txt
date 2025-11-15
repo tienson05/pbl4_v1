@@ -1,11 +1,18 @@
 # src/Controller/CMakeLists.txt (File của Controller)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
 
 add_library(ControllerLib STATIC
-    # (Đã sửa đường dẫn - các file nằm ngay cạnh file này)
+    # Các file .cpp
     AppController.cpp
-    AppController.hpp
     ControllerLib/DisplayFilterEngine.cpp
+    StatisticsManager.cpp
+
+    # CÁC FILE .HPP CÓ Q_OBJECT / SIGNALS
+    AppController.hpp
     ControllerLib/DisplayFilterEngine.hpp
+    StatisticsManager.hpp
 )
 
 # --- THÊM MỚI: Cần đường dẫn đến libpcap ---
@@ -21,13 +28,13 @@ target_include_directories(ControllerLib PUBLIC
     ${CMAKE_SOURCE_DIR}/src/Core/Capture
 )
 
+# Liên kết (link) các thư viện
 target_link_libraries(ControllerLib
     PUBLIC
-        UILib               # vì dùng MainWindow
-        CaptureLib          # vì dùng CaptureEngine
-        CommonLib           # <-- THÊM MỚI (Cần cho PacketData.hpp)
-        Qt6::Core           # QObject, signal/slot
-
-        # --- THÊM MỚI: Cần cho DisplayFilterEngine ---
+        UILib
+        CaptureLib
+        CommonLib
+        Qt6::Core
+        Qt6::Widgets     # <-- Bắt buộc phải có
         ${PCAP_ROOT}/lib/libpcap.so
 )
