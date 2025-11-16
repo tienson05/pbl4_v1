@@ -115,9 +115,17 @@ struct ICMPHeader {
 
 // ==================== APPLICATION LAYER ====================
 struct ApplicationLayer {
+    // Enum để đánh dấu loại QUIC cho ConversationManager
+    enum QuicPacketType {
+        NOT_QUIC,
+        QUIC_LONG_HEADER, // (bit đầu là 1)
+        QUIC_SHORT_HEADER // (bit đầu là 0, bit hai là 1)
+    };
     std::vector<uint8_t> data;
     std::string protocol;      // HTTP, DNS, TLS, ...
     std::string info;
+
+    QuicPacketType quic_type = NOT_QUIC;
 
     // HTTP
     std::string http_method;

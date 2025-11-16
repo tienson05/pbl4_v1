@@ -13,6 +13,7 @@ add_library(ControllerLib STATIC
     AppController.hpp
     ControllerLib/DisplayFilterEngine.hpp
     StatisticsManager.hpp
+    ControllerLib/ConversationManager.hpp ControllerLib/ConversationManager.cpp
 )
 
 # --- THÊM MỚI: Cần đường dẫn đến libpcap ---

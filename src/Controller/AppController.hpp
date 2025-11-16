@@ -7,6 +7,8 @@
 #include "../Common/PacketData.hpp"
 #include "../Controller/ControllerLib/DisplayFilterEngine.hpp"
 #include "StatisticsManager.hpp"
+#include <QtConcurrent/QtConcurrent> // (Cần cho đa luồng)
+#include "ControllerLib/ConversationManager.hpp"
 
 class StatisticsDialog; // Khai báo trước
 
@@ -36,6 +38,7 @@ private:
     DisplayFilterEngine *m_filterEngine;
     StatisticsManager* m_statsManager;
     StatisticsDialog* m_statisticsDialog;
+    ConversationManager* m_convManager; // "Bộ não" stateful mới
 
     // --- 2. THÊM MỚI ---
     QMutex m_allPacketsMutex; // Ổ khóa để bảo vệ m_allPackets

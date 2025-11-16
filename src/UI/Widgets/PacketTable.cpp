@@ -175,17 +175,19 @@ void PacketTable::insertPacketRow(const PacketData &packet)
 
     QColor color;
     if (proto == "TCP" || proto == "HTTP") {
-        color.setRgb(230, 245, 225);
+        color.setRgb(230, 245, 225); // Xanh lá nhạt
     } else if (proto == "TLS") {
-        color.setRgb(230, 225, 245);
+        color.setRgb(230, 225, 245); // Tím nhạt
+    } else if (proto == "QUIC") { // <-- THÊM MỚI
+        color.setRgb(235, 235, 235); // Xám nhạt (giống Wireshark)
     } else if (proto == "UDP" || proto == "DNS") {
-        color.setRgb(225, 240, 255);
+        color.setRgb(225, 240, 255); // Xanh dương nhạt
     } else if (proto == "ICMP") {
-        color.setRgb(255, 245, 220);
+        color.setRgb(255, 245, 220); // Vàng/Cam nhạt
     } else if (proto == "ARP") {
-        color.setRgb(250, 240, 250);
+        color.setRgb(250, 240, 250); // Hồng nhạt
     } else {
-        color = Qt::white;
+        color = Qt::white; // Mặc định
     }
 
     for(int i = 0; i < items.size(); ++i) {
