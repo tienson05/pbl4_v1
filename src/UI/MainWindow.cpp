@@ -5,7 +5,7 @@
 #include "Widgets/PacketTable.hpp"
 
 #include <QVBoxLayout>
-#include <QDebug> // (Để debug)
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -16,7 +16,7 @@ MainWindow::MainWindow(QWidget *parent)
     // --- QStackedWidget & Pages ---
     stack = new QStackedWidget(this);
     welcomePage = new WelcomePage(this);
-    capturePage = new CapturePage(this); // <-- Tên biến là 'capturePage'
+    capturePage = new CapturePage(this);
 
     stack->addWidget(welcomePage);
     stack->addWidget(capturePage);
@@ -38,21 +38,18 @@ MainWindow::MainWindow(QWidget *parent)
     connect(header, &HeaderWidget::minimizeRequested, this, &MainWindow::onMinimizeRequested);
     connect(header, &HeaderWidget::maximizeRequested, this, &MainWindow::onMaximizeRequested);
     connect(header, &HeaderWidget::closeRequested, this, &MainWindow::onCloseRequested);
-    connect(header, &HeaderWidget::saveFileRequested, // <-- Tín hiệu từ HeaderWidget
-            this, &MainWindow::saveFileRequested); // <-- Chuyển tiếp (forward) lên MainWindow
+    connect(header, &HeaderWidget::saveFileRequested,
+            this, &MainWindow::saveFileRequested);
     connect(header, &HeaderWidget::openFileRequested,
             this, &MainWindow::openFileRequested);
-    // Sửa dòng 45
-    connect(header, &HeaderWidget::analyzeStatisticsRequested, // <-- Tín hiệu ĐÚNG từ Header
-            this, &MainWindow::analyzeStatisticsRequested);   // <-- Tín hiệu ĐÚNG để forward lên
+    connect(header, &HeaderWidget::analyzeStatisticsRequested,
+            this, &MainWindow::analyzeStatisticsRequested);
 
     // --- Forward signal từ WelcomePage sang Controller ---
     connect(welcomePage, &WelcomePage::interfaceSelected,
             this, &MainWindow::interfaceSelected);
     connect(welcomePage, &WelcomePage::openFileRequested,
             this, &MainWindow::openFileRequested);
-
-
 
     // --- Forward signal từ CapturePage sang Controller ---
     connect(capturePage, &CapturePage::onRestartCaptureClicked,
@@ -82,18 +79,21 @@ void MainWindow::showCapturePage() {
 // --- SLOTS CÔNG KHAI (do AppController gọi) ---
 
 /**
- * @brief (ĐÃ SỬA) Chuyển tiếp lệnh 'addPacket' xuống PacketTable
+ * @brief (ĐÃ SỬA) Chuyển tiếp "lô" (batch) xuống PacketTable
  */
-void MainWindow::addPacketToTable(const PacketData &packet)
+void MainWindow::addPacketsToTable(QList<PacketData>* packets)
 {
-    // Tên biến đúng là 'capturePage' (không có 'm_')
     if (capturePage) {
-        capturePage->packetTable->addPacket(packet);
+        // (SỬA LỖI) Gọi đúng tên hàm của PacketTable
+        capturePage->packetTable->onPacketsReceived(packets);
+    } else {
+        // Nếu trang không hiển thị, phải xóa con trỏ để tránh rò rỉ
+        delete packets;
     }
 }
 
 /**
- * @brief (ĐÃ SỬA) Chuyển tiếp lệnh 'clearData' xuống PacketTable
+ * @brief (Giữ nguyên) Chuyển tiếp lệnh 'clearData' xuống PacketTable
  */
 void MainWindow::clearPacketTable()
 {
@@ -101,8 +101,9 @@ void MainWindow::clearPacketTable()
         capturePage->packetTable->clearData();
     }
 }
+
 /**
- * @brief (THÊM MỚI) Hàm này được AppController gọi khi cú pháp BPF bị sai.
+ * @brief (Giữ nguyên) Hiển thị lỗi filter
  */
 void MainWindow::showFilterError(const QString &errorText)
 {
@@ -110,10 +111,10 @@ void MainWindow::showFilterError(const QString &errorText)
                          "The filter syntax is invalid. Please check and try again.\n\n"
                          "Error: " + errorText);
 }
+
 // --- Hàm tiện ích (do AppController gọi) ---
 void MainWindow::setDevices(const QVector<QPair<QString, QString>> &devices)
 {
-    // (Giả sử WelcomePage có hàm này)
     welcomePage->setDevices(devices);
 }
 

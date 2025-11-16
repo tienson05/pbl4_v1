@@ -15,6 +15,22 @@ void StatisticsManager::clear()
     m_destIpCounts.clear();
 }
 
+/**
+ * @brief (THÊM MỚI) Hàm xử lý LÔ (batch)
+ * Nó chỉ lặp và gọi hàm xử lý 1 gói (processPacket)
+ */
+void StatisticsManager::processPackets(const QList<PacketData> &packetBatch)
+{
+    for (const PacketData &packet : packetBatch) {
+        // Gọi hàm xử lý 1 gói
+        this->processPacket(packet);
+    }
+}
+
+
+/**
+ * @brief (HÀM CŨ) Xử lý 1 gói
+ */
 void StatisticsManager::processPacket(const PacketData &packet)
 {
     // --- 1. ĐẾM TỔNG SỐ GÓI TIN ---

@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QString>
+#include <QThread> // <-- THÊM MỚI
 #include <pcap.h>
 #include "../../Common/PacketData.hpp"
 
@@ -15,22 +16,24 @@ public:
     void setInterface(const QString &interfaceName);
     void setCaptureFilter(const QString &filter);
     void startCaptureFromFile(const QString &filePath);
-    void setDisplayFilter(const QString &filter);
     void startCapture();
-    void stopCapture();
+    void stopCapture(); // (Hàm này giờ sẽ "chờ")
     void pauseCapture();
     void resumeCapture();
     bool isPaused() const { return m_isPaused; }
 
 signals:
-    void packetCaptured(const PacketData &packet);
+    /**
+     * @brief (ĐÃ THAY ĐỔI) Gửi đi MỘT LÔ (batch) gói tin.
+     * Dùng con trỏ để tránh copy (zero-copy).
+     */
+    void packetsCaptured(QList<PacketData>* packetBatch);
     void errorOccurred(const QString &error);
 
-private slots:
+private:
     void captureLoop();
     void fileReadingLoop();
 
-private:
     // --- pcap ---
     pcap_t* m_pcapHandle = nullptr;
     char m_errbuf[PCAP_ERRBUF_SIZE]{};
@@ -38,16 +41,17 @@ private:
     // --- config ---
     QString m_interface;
     QString m_captureFilter;
-    QString m_displayFilter;
 
     // --- state ---
     volatile bool m_isPaused = false;
     volatile bool m_isRunning = false;
     int m_packetCounter = 0;
 
+    // --- (THÊM MỚI) ---
+    QThread* m_captureThread = nullptr; // Con trỏ theo dõi luồng
+
     // --- helper ---
-    void setupPcap();
+    bool setupPcap();
     void closePcap();
     bool applyCaptureFilter();
-    void emitPacket(const PacketData& pkt);
 };
