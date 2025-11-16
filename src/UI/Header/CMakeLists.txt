@@ -9,10 +9,13 @@ add_library(HeaderLib STATIC
     AnalyzeMenu.hpp
 )
 
-# Cho phép các module khác include file header trong UI/
-target_include_directories(HeaderLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# Cho phép các module khác (#include "HeaderWidget.hpp")
+target_include_directories(HeaderLib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
-target_link_libraries(HeaderLib
-    PUBLIC
-        Qt6::Widgets
+# Liên kết với các thư viện mà HeaderLib cần
+target_link_libraries(HeaderLib PUBLIC
+    Qt6::Core
+    Qt6::Widgets
 )

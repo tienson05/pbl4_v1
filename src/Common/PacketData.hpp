@@ -14,15 +14,13 @@ struct EthernetHeader {
     std::array<uint8_t, 6> dest_mac{};
     std::array<uint8_t, 6> src_mac{};
     uint16_t ether_type = 0;      // 0x0800: IPv4, 0x86DD: IPv6, 0x0806: ARP, 0x8100: VLAN
-    uint16_t vlan_tpid = 0;       // VLAN Tag Protocol ID (nếu có)
-    uint16_t vlan_tci = 0;        // VLAN Tag Control Info (PCP, DEI, VID)
 };
 
 // ==================== LAYER 2.5: VLAN (802.1Q) ====================
 struct VLANHeader {
-    uint16_t tpid = 0;            // 0x8100
-    uint16_t tci = 0;             // Priority (3) + DEI (1) + VLAN ID (12)
-    uint16_t ether_type = 0;      // Loại gói sau VLAN
+    uint16_t tpid = 0;          // 0x8100
+    uint16_t tci = 0;           // Priority (3) + DEI (1) + VLAN ID (12)
+    uint16_t ether_type = 0;    // Loại gói sau VLAN
 };
 
 // ==================== LAYER 3: IPv4 ====================
@@ -80,6 +78,12 @@ struct TCPHeader {
     std::array<uint8_t, 40> options{};
     uint8_t  options_len = 0;
 
+    // --- (SỬA ĐỔI) THÊM CÁC TRƯỜNG TIMESTAMP ---
+    bool     has_timestamp = false;
+    uint32_t ts_val = 0;
+    uint32_t ts_ecr = 0;
+    // ------------------------------------
+
     enum Flags : uint8_t {
         FIN = 0x01,
         SYN = 0x02,
@@ -111,9 +115,17 @@ struct ICMPHeader {
 
 // ==================== APPLICATION LAYER ====================
 struct ApplicationLayer {
+    // Enum để đánh dấu loại QUIC cho ConversationManager
+    enum QuicPacketType {
+        NOT_QUIC,
+        QUIC_LONG_HEADER, // (bit đầu là 1)
+        QUIC_SHORT_HEADER // (bit đầu là 0, bit hai là 1)
+    };
     std::vector<uint8_t> data;
-    std::string protocol;     // HTTP, DNS, TLS, ...
+    std::string protocol;      // HTTP, DNS, TLS, ...
     std::string info;
+
+    QuicPacketType quic_type = NOT_QUIC;
 
     // HTTP
     std::string http_method;
@@ -183,18 +195,40 @@ struct PacketData {
     bool is_duplicate = false;
 
     // ======= Methods =======
+
+    /**
+     * @brief (ĐÃ SỬA) Reset toàn bộ dữ liệu của struct
+     * để chuẩn bị phân tích gói tin mới.
+     */
     void clear(){
         raw_packet.clear();
         tree_view.clear();
+        expert_info.clear();
+        tree_depth = 0;
+
         has_vlan = is_ipv4 = is_ipv6 = is_arp = false;
         is_tcp = is_udp = is_icmp = false;
         is_malformed = is_retransmitted = is_duplicate = false;
+
+        eth = EthernetHeader{};
+        vlan = VLANHeader{};
+        ipv4 = IPv4Header{};
+        ipv6 = IPv6Header{};
+        arp = ARPHeader{};
+        tcp = TCPHeader{};
+        udp = UDPHeader{};
+        icmp = ICMPHeader{};
+        app = ApplicationLayer{};
     }
+
     std::string toJson() const;
     void printTree() const{
         std::cout << tree_view;
     }
 };
 
-#endif // PACKETDATA_HPP
+// (Cần thiết để QVariant lưu trữ PacketData)
+#include <QVariant>
+Q_DECLARE_METATYPE(PacketData)
 
+#endif // PACKETDATA_HPP

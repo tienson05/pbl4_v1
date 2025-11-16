@@ -1,19 +1,22 @@
 #include "../../Common/PacketData.hpp"
 #include "Parser.hpp"
-// Include tất cả parser
+
+// Include tất cả parser (ĐÃ KÍCH HOẠT HẾT)
 #include "../Protocols/LinkLayer/EthernetParser.hpp"
 #include "../Protocols/LinkLayer/VLANParser.hpp"
 #include "../Protocols/NetworkLayer/IPv4Parser.hpp"
-// #include "../Protocols/NetworkLayer/IPv6Parser.hpp"
-// #include "../Protocols/NetworkLayer/ARPParser.hpp"
-// #include "../Protocols/NetworkLayer/ICMPParser.hpp"
-// #include "../Protocols/TransportLayer/TCPParser.hpp"
-// #include "../Protocols/TransportLayer/UDPParser.hpp"
-// #include "../Protocols/ApplicationLayer/HTTPParser.hpp"
+#include "../Protocols/NetworkLayer/IPv6Parser.hpp"
+#include "../Protocols/NetworkLayer/ARPParser.hpp"
+#include "../Protocols/NetworkLayer/ICMPParser.hpp"
+#include "../Protocols/TransportLayer/TCPParser.hpp"
+#include "../Protocols/TransportLayer/UDPParser.hpp"
+#include "../Protocols/ApplicationLayer/ApplicationParser.hpp"
 
 #include <cstring>
 #include <ctime>
 #include <arpa/inet.h>
+
+
 
 void Parser::appendTree(PacketData* pkt, const std::string& line) {
     pkt->tree_view += std::string(pkt->tree_depth * 2, ' ') + line + "\n";
@@ -71,55 +74,85 @@ bool Parser::parse(PacketData* pkt, const uint8_t* data, size_t len) {
         remaining -= ip_hdr_len;
         IPv4Parser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->ipv4);
 
-        // --- Layer 4 ---
+        // --- Layer 4 (cho IPv4) ---
         uint8_t proto = pkt->ipv4.protocol;
-
-        // if (proto == 6 && remaining >= 20) {
-        //     pkt->is_tcp = TCPParser::parse(pkt->tcp, ptr, remaining);
-        //     if (pkt->is_tcp) {
-        //         size_t tcp_hdr_len = pkt->tcp.data_offset * 4;
-        //         ptr += tcp_hdr_len;
-        //         remaining -= tcp_hdr_len;
-        //         TCPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->tcp);
-        //         ApplicationParser::parse(pkt->app, ptr, remaining, pkt->tcp.src_port, pkt->tcp.dest_port);
-        //     }
-        // }
-        // else if (proto == 17 && remaining >= 8) {
-        //     pkt->is_udp = UDPParser::parse(pkt->udp, ptr, remaining);
-        //     if (pkt->is_udp) {
-        //         ptr += 8; remaining -= 8;
-        //         UDPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->udp);
-        //         ApplicationParser::parse(pkt->app, ptr, remaining, pkt->udp.src_port, pkt->udp.dest_port);
-        //     }
-        // }
-        // else if (proto == 1 && remaining >= 4) {
-        //     pkt->is_icmp = ICMPParser::parse(pkt->icmp, ptr, remaining);
-        //     if (pkt->is_icmp) {
-        //         ICMPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->icmp);
-        //     }
-        // }
+        if (proto == 6 && remaining >= 20) { // TCP
+            pkt->is_tcp = TCPParser::parse(pkt->tcp, ptr, remaining);
+            if (pkt->is_tcp) {
+                size_t tcp_hdr_len = pkt->tcp.data_offset * 4;
+                ptr += tcp_hdr_len; remaining -= tcp_hdr_len;
+                TCPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->tcp);
+ApplicationParser::parse(pkt->app, ptr, remaining, pkt->tcp.src_port, pkt->tcp.dest_port, true);            }
+        }
+        else if (proto == 17 && remaining >= 8) { // UDP
+            pkt->is_udp = UDPParser::parse(pkt->udp, ptr, remaining);
+            if (pkt->is_udp) {
+                ptr += 8; remaining -= 8;
+                UDPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->udp);
+ApplicationParser::parse(pkt->app, ptr, remaining, pkt->udp.src_port, pkt->udp.dest_port, false);            }
+        }
+        else if (proto == 1 && remaining >= 4) { // ICMPv4
+            pkt->is_icmp = ICMPParser::parse(pkt->icmp, ptr, remaining);
+            if (pkt->is_icmp) {
+                ICMPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->icmp);
+            }
+        }
     }
-    // else if (next_proto == 0x86DD && remaining >= 40) {
-    //     pkt->is_ipv6 = IPv6Parser::parse(pkt->ipv6, ptr, remaining);
-    //     if (pkt->is_ipv6) {
-    //         ptr += 40; remaining -= 40;
-    //         IPv6Parser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->ipv6);
-    //     }
-    // }
-    // else if (next_proto == 0x0806 && remaining >= 28) {
-    //     pkt->is_arp = ARParser::parse(pkt->arp, ptr, remaining);
-    //     if (pkt->is_arp) {
-    //         ARParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->arp);
-    //     }
-    // }
-    // else {
-    //     appendTree(pkt, "[Unknown EtherType: 0x" + EthernetParser::to_hex(next_proto) + "]");
-    // }
 
-    // // ==================== APPLICATION ====================
-    // if (!pkt->app.protocol.empty()) {
-    //     ApplicationParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->app);
-    // }
+    // --- KHỐI IPv6 ĐÃ SỬA ---
+    else if (next_proto == 0x86DD && remaining >= 40) {
+        // --- IPv6 ---
+        // 'ptr' và 'remaining' sẽ bị thay đổi bởi hàm parse()
+        pkt->is_ipv6 = IPv6Parser::parse(pkt->ipv6, ptr, remaining);
+
+        if (pkt->is_ipv6) {
+            // (Không cần tăng 'ptr' hay 'remaining' nữa)
+            IPv6Parser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->ipv6);
+
+            // --- THÊM MỚI: Layer 4 (cho IPv6) ---
+            uint8_t proto = pkt->ipv6.next_header;
+
+            if (proto == 6 && remaining >= 20) { // TCP
+                pkt->is_tcp = TCPParser::parse(pkt->tcp, ptr, remaining);
+                if (pkt->is_tcp) {
+                    size_t tcp_hdr_len = pkt->tcp.data_offset * 4;
+                    ptr += tcp_hdr_len; remaining -= tcp_hdr_len;
+                    TCPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->tcp);
+                     // --- KÍCH HOẠT TẦNG 7 ---
+ApplicationParser::parse(pkt->app, ptr, remaining, pkt->tcp.src_port, pkt->tcp.dest_port, true);                }
+            }
+            else if (proto == 17 && remaining >= 8) { // UDP
+                pkt->is_udp = UDPParser::parse(pkt->udp, ptr, remaining);
+                if (pkt->is_udp) {
+                    ptr += 8; remaining -= 8;
+                    UDPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->udp);
+                     // --- KÍCH HOẠT TẦNG 7 ---
+ApplicationParser::parse(pkt->app, ptr, remaining, pkt->udp.src_port, pkt->udp.dest_port, false);                }
+            }
+            else if (proto == 58 && remaining >= 4) { // 58 = ICMPv6
+                pkt->is_icmp = ICMPParser::parse(pkt->icmp, ptr, remaining);
+                if (pkt->is_icmp) {
+                    ICMPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->icmp);
+                }
+            }
+        }
+    }
+    // --- KẾT THÚC KHỐI SỬA ---
+
+    else if (next_proto == 0x0806 && remaining >= 28) { // <-- ARP
+        pkt->is_arp = ARPParser::parse(pkt->arp, ptr, remaining);
+        if (pkt->is_arp) {
+            ARPParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->arp);
+        }
+    }
+    else { // <-- Unknown
+        appendTree(pkt, "[Unknown EtherType: " + EthernetParser::to_hex(next_proto) + "]");
+    }
+
+    // ==================== APPLICATION ====================
+    if (!pkt->app.protocol.empty()) {
+        ApplicationParser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->app);
+    }
 
     return true;
 }

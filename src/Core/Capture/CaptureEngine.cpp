@@ -4,6 +4,12 @@
 #include <QRandomGenerator>
 #include <QTime>
 #include <QString>
+#include <QMetaObject>
+
+// --- (MỚI) Hằng số cho việc gom lô (Batching) ---
+const int LIVE_CAPTURE_TIMEOUT_MS = 100; // Gửi lô sau mỗi 100ms
+const int LIVE_BATCH_SIZE = 200;         // Hoặc khi đủ 200 gói
+const int FILE_READ_BATCH_SIZE = 1000;   // Gửi 1000 gói/lần khi đọc file
 
 CaptureEngine::CaptureEngine(QObject *parent)
     : QObject(parent)
@@ -15,39 +21,52 @@ CaptureEngine::CaptureEngine(QObject *parent)
 CaptureEngine::~CaptureEngine() {
     stopCapture();
 }
-// Hàm set interface
+
 void CaptureEngine::setInterface(const QString &interfaceName) {
     m_interface = interfaceName;
 }
-// Hàm set filter
+
 void CaptureEngine::setCaptureFilter(const QString &filter) {
     m_captureFilter = filter;
 }
 
-void CaptureEngine::setDisplayFilter(const QString &filter) {
-    m_displayFilter = filter;
-}
-// Hàm bắt đầu bắt gói tin
+/**
+ * @brief (ĐÃ SỬA) Lưu lại con trỏ luồng (m_captureThread)
+ */
 void CaptureEngine::startCapture() {
-    if (m_isRunning) return;
-
-    setupPcap();
-    if (!m_pcapHandle) {
-        emit errorOccurred(QString("Failed to open interface: %1").arg(m_errbuf));
-        return;
-    }
-    if (!applyCaptureFilter()) {
-        emit errorOccurred(QString("Failed to set filter: %1").arg(m_errbuf));
-    }
+    if (m_isRunning) stopCapture(); // Dừng luồng cũ nếu đang chạy
 
     m_isRunning = true;
     m_isPaused = false;
-    QThread* thread = QThread::create([this]() { captureLoop(); });
-    thread->start();
+    m_packetCounter = 0;
+
+    // (SỬA) Gán luồng mới vào biến thành viên
+    m_captureThread = QThread::create([this]() {
+        captureLoop(); // Hàm này sẽ chạy trên luồng mới
+    });
+    connect(m_captureThread, &QThread::finished, m_captureThread, &QObject::deleteLater);
+    m_captureThread->start();
 }
 
+/**
+ * @brief (ĐÃ SỬA) Chờ (wait) cho luồng cũ chết hẳn
+ */
 void CaptureEngine::stopCapture() {
-    m_isRunning = false;
+    m_isRunning = false; // Báo cho các vòng lặp dừng lại
+
+    if (m_pcapHandle) {
+        // Ngắt (break) vòng lặp pcap_next_ex ngay lập tức
+        pcap_breakloop(m_pcapHandle);
+    }
+
+    // --- (SỬA LỖI CRASH) ---
+    // Chờ cho luồng (thread) cũ kết thúc VÀ bị xóa
+    if (m_captureThread && m_captureThread->isRunning()) {
+        m_captureThread->quit(); // Yêu cầu thoát
+        m_captureThread->wait(1000); // Chờ (block) tối đa 1 giây
+    }
+    m_captureThread = nullptr; // Xóa con trỏ cũ
+    // -----------------------
 }
 
 void CaptureEngine::pauseCapture() {
@@ -58,12 +77,15 @@ void CaptureEngine::resumeCapture() {
     m_isPaused = false;
 }
 
-void CaptureEngine::setupPcap() {
+bool CaptureEngine::setupPcap() {
     closePcap();
-    m_pcapHandle = pcap_open_live(m_interface.toUtf8().constData(),65536, 1, 1000, m_errbuf);
+    m_pcapHandle = pcap_open_live(m_interface.toUtf8().constData(), 65536, 1, LIVE_CAPTURE_TIMEOUT_MS, m_errbuf);
     if (!m_pcapHandle) {
         qDebug() << "pcap_open_live failed:" << m_errbuf;
+        return false;
     }
+    pcap_setnonblock(m_pcapHandle, 1, m_errbuf);
+    return true;
 }
 
 void CaptureEngine::closePcap() {
@@ -75,7 +97,6 @@ void CaptureEngine::closePcap() {
 
 bool CaptureEngine::applyCaptureFilter() {
     if (m_captureFilter.isEmpty() || !m_pcapHandle) return true;
-
     struct bpf_program fp;
     if (pcap_compile(m_pcapHandle, &fp, m_captureFilter.toUtf8().constData(), 0, PCAP_NETMASK_UNKNOWN) == -1) {
         strncpy(m_errbuf, pcap_geterr(m_pcapHandle), PCAP_ERRBUF_SIZE);
@@ -91,36 +112,137 @@ bool CaptureEngine::applyCaptureFilter() {
 }
 
 void CaptureEngine::captureLoop() {
-    while (m_isRunning && m_pcapHandle) {
+    if (!setupPcap()) {
+        emit errorOccurred(QString("Failed to open interface: %1").arg(m_errbuf));
+        return;
+    }
+    if (!applyCaptureFilter()) {
+        emit errorOccurred(QString("Failed to set filter: %1").arg(m_errbuf));
+        closePcap();
+        return;
+    }
+
+    Parser parser;
+    QList<PacketData>* packetBatch = new QList<PacketData>();
+    packetBatch->reserve(LIVE_BATCH_SIZE);
+    struct pcap_pkthdr* header;
+    const u_char* data;
+    int ret;
+
+    while (m_isRunning)
+    {
         if (m_isPaused) {
             QThread::msleep(100);
             continue;
         }
 
-        struct pcap_pkthdr* header;
-        const u_char* packet;
-        int ret = pcap_next_ex(m_pcapHandle, &header, &packet);
+        ret = pcap_next_ex(m_pcapHandle, &header, &data);
 
         if (ret == 1) {
             PacketData pkt;
-            Parser parser;
-            if (parser.parse(&pkt, packet, header->caplen)) {
+            if (parser.parse(&pkt, data, header->caplen)) {
                 pkt.cap_length = header->caplen;
                 pkt.wire_length = header->len;
                 pkt.packet_id = ++m_packetCounter;
-
-                emitPacket(pkt);
+                packetBatch->append(pkt);
             }
         }
-        else if (ret == -1) {
-            emit errorOccurred(QString("pcap error: %1").arg(pcap_geterr(m_pcapHandle)));
+        else if (ret == 0) { // Timeout
+            // (Bỏ qua, vòng lặp sẽ kiểm tra logic gửi lô)
+        }
+        else if (ret == -1 || ret == -2) { // Lỗi hoặc break
+            qDebug() << "pcap_next_ex error or breakloop";
             break;
         }
+
+        if ( (packetBatch->size() >= LIVE_BATCH_SIZE) ||
+            (ret == 0 && !packetBatch->isEmpty()) )
+        {
+            QMetaObject::invokeMethod(this, [this, packetBatch]() {
+                emit packetsCaptured(packetBatch); // Gửi con trỏ
+            }, Qt::QueuedConnection);
+            packetBatch = new QList<PacketData>();
+            packetBatch->reserve(LIVE_BATCH_SIZE);
+        }
+    } // Kết thúc while(m_isRunning)
+
+    if (!packetBatch->isEmpty()) {
+        QMetaObject::invokeMethod(this, [this, packetBatch]() {
+            emit packetsCaptured(packetBatch);
+        }, Qt::QueuedConnection);
+    } else {
+        delete packetBatch;
     }
+
+    closePcap();
+    qDebug() << "Capture thread finished.";
 }
 
-void CaptureEngine::emitPacket(const PacketData& pkt) {
-    QMetaObject::invokeMethod(this, [this, pkt]() {
-        emit packetCaptured(pkt);
-    }, Qt::QueuedConnection);
+
+void CaptureEngine::startCaptureFromFile(const QString &filePath)
+{
+    if (m_isRunning) stopCapture();
+    m_interface = filePath;
+    m_captureFilter = "";
+    m_isRunning = true;
+    m_isPaused = false;
+    m_packetCounter = 0;
+
+    // (SỬA) Gán luồng mới vào biến thành viên
+    m_captureThread = QThread::create([this]() { fileReadingLoop(); });
+    connect(m_captureThread, &QThread::finished, m_captureThread, &QObject::deleteLater);
+    m_captureThread->start();
+}
+
+void CaptureEngine::fileReadingLoop()
+{
+    char errbuf[PCAP_ERRBUF_SIZE];
+    m_pcapHandle = pcap_open_offline(m_interface.toStdString().c_str(), errbuf);
+    if (!m_pcapHandle) {
+        emit errorOccurred(QString("pcap_open_offline error: %1").arg(errbuf));
+        return;
+    }
+
+    struct pcap_pkthdr* header;
+    const u_char* data;
+    int res;
+    Parser parser;
+    QList<PacketData>* packetBatch = new QList<PacketData>();
+    packetBatch->reserve(FILE_READ_BATCH_SIZE);
+
+    while (m_isRunning && (res = pcap_next_ex(m_pcapHandle, &header, &data)) >= 0)
+    {
+        if (res == 1) {
+            PacketData pkt;
+            if (parser.parse(&pkt, data, header->caplen)) {
+                pkt.cap_length = header->caplen;
+                pkt.wire_length = header->len;
+                pkt.packet_id = ++m_packetCounter;
+                packetBatch->append(pkt);
+            }
+
+            if (packetBatch->size() >= FILE_READ_BATCH_SIZE)
+            {
+                QMetaObject::invokeMethod(this, [this, packetBatch]() {
+                    emit packetsCaptured(packetBatch);
+                }, Qt::QueuedConnection);
+                packetBatch = new QList<PacketData>();
+                packetBatch->reserve(FILE_READ_BATCH_SIZE);
+            }
+        }
+        else if (res == -2) { // Hết file
+            break;
+        }
+    } // Kết thúc while
+
+    if (!packetBatch->isEmpty()) {
+        QMetaObject::invokeMethod(this, [this, packetBatch]() {
+            emit packetsCaptured(packetBatch);
+        }, Qt::QueuedConnection);
+    } else {
+        delete packetBatch;
+    }
+
+    closePcap();
+    qDebug() << "File reading thread finished.";
 }
