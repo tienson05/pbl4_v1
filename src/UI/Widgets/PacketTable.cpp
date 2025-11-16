@@ -1,5 +1,6 @@
 // PacketTable.cpp
 #include "PacketTable.hpp"
+#include "../../Core/Protocols/NetworkLayer/ICMPParser.hpp" // (Sửa thành ../../)
 #include <QVBoxLayout>
 #include <QSplitter>
 #include <QTableWidget>
@@ -300,6 +301,22 @@ void PacketTable::showPacketDetails(const PacketData &packet)
         addField(udp, "Destination Port", QString::number(packet.udp.dest_port));
         addField(udp, "Length", QString::number(packet.udp.length));
     }
+    else if (packet.is_icmp) {
+        QTreeWidgetItem *icmp = new QTreeWidgetItem(root);
+        icmp->setText(0, "Internet Control Message Protocol");
+
+        // (Sử dụng hàm static mới từ ICMPParser)
+        QString typeStr = QString::fromStdString(ICMPParser::getTypeString(packet.icmp.type));
+        addField(icmp, "Type", QString("%1 (%2)").arg(packet.icmp.type).arg(typeStr));
+        addField(icmp, "Code", QString::number(packet.icmp.code));
+        addField(icmp, "Checksum", QString("0x%1").arg(packet.icmp.checksum, 4, 16, QChar('0')));
+
+        // (Chỉ hiển thị ID/Seq nếu là Echo)
+        if (packet.icmp.type == 0 || packet.icmp.type == 8) {
+            addField(icmp, "Identifier (id)", QString("0x%1 (%2)").arg(packet.icmp.id, 4, 16, QChar('0')).arg(packet.icmp.id));
+            addField(icmp, "Sequence Number (seq)", QString("0x%1 (%2)").arg(packet.icmp.sequence, 4, 16, QChar('0')).arg(packet.icmp.sequence));
+        }
+    }
 
     if (!packet.app.protocol.empty()) {
         QTreeWidgetItem *app = new QTreeWidgetItem(root);
@@ -449,7 +466,21 @@ QString PacketTable::getInfo(const PacketData &p)
         }
     }
     if (p.is_icmp) {
-        return "ICMP Packet";
+        // (Sử dụng hàm static mới từ ICMPParser)
+        QString info = QString::fromStdString(ICMPParser::getTypeString(p.icmp.type));
+
+        // (Thêm 'request' hoặc 'reply' cho ping)
+        if (p.icmp.type == 8) info += " (ping) request";
+        if (p.icmp.type == 0) info += " (ping) reply";
+
+        // (Thêm id và seq, LẤY TTL TỪ IPV4)
+        if ((p.icmp.type == 0 || p.icmp.type == 8) && p.is_ipv4) {
+            info += QString(", id=0x%1, seq=%2, ttl=%3")
+            .arg(p.icmp.id, 4, 16, QChar('0'))
+                .arg(p.icmp.sequence)
+                .arg(p.ipv4.ttl); // Lấy TTL từ IP header
+        }
+        return info;
     }
 
     return QString("Len=%1").arg(p.cap_length);
