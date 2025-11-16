@@ -16,12 +16,15 @@ AppController::AppController(MainWindow *mainWindow, QObject *parent)
     m_captureEngine(nullptr),
     m_filterEngine(nullptr),
     m_statsManager(nullptr),
-    m_statisticsDialog(nullptr)
+    m_statisticsDialog(nullptr),
+    m_convManager(nullptr)
+
 {
     // --- Khởi tạo Core ---
     m_captureEngine = new CaptureEngine(this);
     m_filterEngine = new DisplayFilterEngine(this);
     m_statsManager = new StatisticsManager(this);
+    m_convManager = new ConversationManager(this);
     loadInterfaces();
 
     // --- (Các connect từ UI giữ nguyên) ---
@@ -60,6 +63,7 @@ void AppController::onInterfaceSelected(const QString &interfaceName, const QStr
     }
 
     m_statsManager->clear();
+    m_convManager->clear();
     m_filterEngine->setFilter("");
     emit clearPacketTable();
 
@@ -85,6 +89,7 @@ void AppController::onOpenFileRequested()
         m_allPackets.clear();
     }
     m_statsManager->clear();
+    m_convManager->clear();
     m_filterEngine->setFilter("");
     emit clearPacketTable();
     m_captureEngine->startCaptureFromFile(filePath);
@@ -146,6 +151,7 @@ void AppController::onRestartCaptureClicked()
     }
 
     m_statsManager->clear();
+    m_convManager->clear();
     m_filterEngine->setFilter("");
     emit clearPacketTable();
     m_captureEngine->stopCapture();
@@ -189,6 +195,12 @@ void AppController::onPacketsCaptured(QList<PacketData>* packetBatch)
 {
     // (Hàm này giờ chạy trên LUỒNG CHÍNH,
     // vì CaptureEngine đã dùng QueuedConnection)
+    // --- GỌI BỘ NÃO MỚI (TRƯỚC) ---
+    // Lặp qua lô (batch) và gọi bộ não "stateful"
+    // để nó SỬA ĐỔI (modify) các gói tin (ví dụ: gán nhãn "QUIC")
+    for (PacketData &packet : *packetBatch) { // <-- Lặp bằng tham chiếu (reference)
+        m_convManager->processPacket(packet);
+    }
 
     // 1. (SỬA) Khóa và thêm lô vào danh sách chính
     {

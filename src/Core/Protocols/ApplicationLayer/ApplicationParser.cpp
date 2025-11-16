@@ -2,9 +2,24 @@
 #include "HTTPParser.hpp"
 #include "DNSParser.hpp"
 #include <string>
+#include <sstream> // <-- THÊM MỚI
+#include <iomanip> // <-- THÊM MỚI
+
+// --- (THÊM MỚI) Hàm helper để chuyển đổi byte sang chuỗi Hex ---
+static std::string hexStr(const uint8_t* data, size_t len) {
+    if (len == 0) return "";
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0');
+    for (size_t i = 0; i < len; ++i) {
+        ss << std::setw(2) << static_cast<int>(data[i]);
+    }
+    return ss.str();
+}
+// ---------------------------------------------------------
+
 
 /**
- * @brief (ĐÃ SỬA) Phân tích Tầng 7, phân biệt TCP/UDP
+ * @brief (ĐÃ SỬA) Phân tích Tầng 7, phân biệt TCP/UDP và (CHỈ) đánh dấu QUIC
  */
 bool ApplicationParser::parse(ApplicationLayer& app, const uint8_t* data, size_t len,
                               uint16_t src_port, uint16_t dest_port, bool is_tcp)
@@ -13,54 +28,121 @@ bool ApplicationParser::parse(ApplicationLayer& app, const uint8_t* data, size_t
 
     // 1. Kiểm tra HTTP (cổng 80)
     if (src_port == 80 || dest_port == 80) {
-        if (is_tcp && len > 0) { // HTTP phải là TCP và có dữ liệu
+        if (is_tcp && len > 0) {
             return HTTPParser::parse(app, data, len);
         }
     }
 
     // 2. Kiểm tra DNS (cổng 53)
     if (src_port == 53 || dest_port == 53) {
-        if (!is_tcp && len > 0) { // DNS chủ yếu là UDP và có dữ liệu
+        if (!is_tcp && len > 0) {
             return DNSParser::parse(app, data, len);
         }
     }
 
-    // 3. (SỬA LỖI QUAN TRỌNG) Kiểm tra TLS/SSL (HTTPS - Cổng 443)
+    // 3. (SỬA LỖI QUAN TRỌNG) Kiểm tra Cổng 443 (TLS và QUIC)
+    // 3. (SỬA LỖI QUAN TRỌNG) Kiểm tra Cổng 443 (TLS và QUIC)
     if (src_port == 443 || dest_port == 443) {
 
-        // --- LOGIC MỚI ---
-        // Chỉ gán nhãn "TLS" nếu:
-        // 1. Nó là TCP
-        // 2. Nó có mang dữ liệu (len > 0).
-        //    (Các gói [SYN], [ACK] trống sẽ có len == 0)
-
-        if (is_tcp && len > 0) {
-            app.protocol = "TLS";
-            app.info = "Transport Layer Security";
-            return true;
+        // --- TRƯỜNG HỢP A: LÀ TCP ---
+        if (is_tcp) {
+            // Chỉ gán nhãn "TLS" nếu nó là TCP VÀ có mang dữ liệu (payload).
+            if (len > 0) {
+            app.protocol = "TLS"; // (TCP/443 là TLS, ra quyết định ngay)
+                app.info = "Transport Layer Security";
+                return true; // Đánh dấu là đã xử lý
+            }
         }
+        // --- TRƯỜNG HỢP B: LÀ UDP ---
+        // (Đây là bên trong khối 'if (src_port == 443 ...)')
+        else { // (!is_tcp có nghĩa là UDP)
 
-        // Nếu là UDP/443 (QUIC) -> không làm gì
-        // Nếu là TCP/443 nhưng len == 0 (gói [ACK]) -> không làm gì
-        //
-        // Khi hàm này 'return false', StatisticsManager và PacketTable
-        // sẽ tự động gán nhãn cho nó là "TCP" (đúng như Wireshark)
+            if (len > 0) {
+                // (SỬA LỖI LOGIC)
+                // Chúng ta KHÔNG gán app.protocol ở đây.
+                // Chúng ta CHỈ gán app.quic_type.
+
+                // 1. Bit đầu tiên là 1 (Long Header)
+                // 1. Bit đầu tiên là 1 (Long Header)
+                if ((data[0] & 0x80) != 0) {
+
+                    // --- (BẮT ĐẦU SỬA LỖI) ---
+                    // (Kiểm tra gói Version Negotiation y hệt Wireshark)
+                    // Cần ít nhất 5 byte (1 byte header + 4 byte version)
+                    if (len >= 5) {
+                        uint32_t version;
+                        // Đọc 4 byte version (bắt đầu từ byte thứ 2)
+                        memcpy(&version, data + 1, 4);
+
+                        // Nếu Version là 0x00000000, đây là Version Negotiation
+                        if (version == 0) {
+                            // Wireshark gọi đây là UDP. Chúng ta return false
+                            // để nó tự động gán nhãn UDP.
+                            return false;
+                        }
+                    }
+                    // --- (KẾT THÚC SỬA LỖI) ---
+
+                    // (Nếu code chạy đến đây, nó KHÔNG PHẢI là Version Negotiation,
+                    //  chúng ta tiếp tục phân tích như cũ)
+
+                    app.quic_type = ApplicationLayer::QUIC_LONG_HEADER;
+
+                    // (Phân tích sâu để lấy Info)
+                    const uint8_t* ptr = data;
+                    size_t remaining = len;
+                    ptr++; remaining--;
+                    if (remaining < 4) return true;
+                    ptr += 4; remaining -= 4; // Bỏ qua 4 byte Version
+                    if (remaining < 1) return true;
+                    uint8_t dcid_len = ptr[0];
+                    ptr++; remaining--;
+                    if (remaining < dcid_len) return true;
+                    std::string dcid_str = hexStr(ptr, dcid_len);
+                    ptr += dcid_len; remaining -= dcid_len;
+                    if (remaining < 1) return true;
+                    uint8_t scid_len = ptr[0];
+                    ptr++; remaining--;
+                    if (remaining < scid_len) return true;
+                    std::string scid_str = hexStr(ptr, scid_len);
+
+                    // (Logic hiển thị Info của bạn giữ nguyên)
+                    uint8_t type_bits = (data[0] & 0x30) >> 4;
+                    switch (type_bits) {
+                    case 0x00: app.info = "Initial"; break;
+                    case 0x01: app.info = "0-RTT"; break;
+                    case 0x02: app.info = "Handshake"; break;
+                    case 0x03: app.info = "Retry"; break;
+                    default: app.info = "QUIC Long Header";
+                    }
+                    if (!dcid_str.empty()) {
+                        app.info += ", DCID=" + dcid_str;
+                    }
+                    if (!scid_str.empty()) {
+                        app.info += ", SCID=" + scid_str;
+                    }
+
+                    return true;
+                }
+                // 2. Bit đầu 0, bit hai 1 (Short Header)
+                else if ((data[0] & 0xC0) == 0x40) {
+                    app.quic_type = ApplicationLayer::QUIC_SHORT_HEADER;
+                    return true; // Đánh dấu là đã xử lý
+                }
+            }
+        } // Kết thúc 'else' (là UDP)
     }
 
     // Không tìm thấy parser nào
     return false;
 }
 
+// (Hàm appendTreeView giữ nguyên)
 void ApplicationParser::appendTreeView(std::string& tree, int depth, const ApplicationLayer& app) {
-    // Gọi hàm appendTreeView của parser con tương ứng
-
     if (app.protocol == "HTTP") {
         HTTPParser::appendTreeView(tree, depth, app);
     }
     else if (app.protocol == "DNS") {
         DNSParser::appendTreeView(tree, depth, app);
     }
-    // else if (app.protocol == "TLS") {
-    //     // (Tạm thời chưa có)
-    // }
 }
