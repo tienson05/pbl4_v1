@@ -24,21 +24,21 @@ public:
 
 public slots:
     // --- CÁC SLOT CÔNG KHAI (để AppController kết nối) ---
-    // (Lỗi của bạn là đã khai báo các hàm này ở nhiều nơi)
 
     /**
-     * @brief Slot nhận tín hiệu từ AppController
-     * và chuyển tiếp gói tin xuống PacketTable.
+     * @brief (ĐÃ THAY ĐỔI) Slot nhận tín hiệu "lô" (batch) từ AppController
+     * và chuyển tiếp "lô" đó xuống PacketTable.
      */
-    void addPacketToTable(const PacketData &packet);
+    void addPacketsToTable(QList<PacketData>* packets);
 
     /**
-     * @brief Slot nhận tín hiệu từ AppController
+     * @brief (Giữ nguyên) Slot nhận tín hiệu từ AppController
      * và yêu cầu PacketTable tự xóa sạch.
      */
     void clearPacketTable();
+
     /**
-    * @brief (THÊM MỚI) Slot này nhận tín hiệu lỗi cú pháp
+     * @brief (Giữ nguyên) Slot này nhận tín hiệu lỗi cú pháp
      * từ AppController và hiển thị một QMessageBox.
      */
     void showFilterError(const QString &errorText);
@@ -69,5 +69,5 @@ private:
     HeaderWidget *header;
     QStackedWidget *stack;
     WelcomePage *welcomePage;
-    CapturePage *capturePage; // <-- Tên biến đúng là 'capturePage'
+    CapturePage *capturePage;
 };

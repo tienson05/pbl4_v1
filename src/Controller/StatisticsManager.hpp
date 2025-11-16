@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QMap>
 #include <QString>
+#include <QList> // <-- THÊM MỚI
 #include "../../Common/PacketData.hpp"
 
 class StatisticsManager : public QObject
@@ -16,15 +17,20 @@ public:
     QMap<QString, qint64> getProtocolCounts() const;
     QMap<QString, qint64> getSourceIpCounts() const;
     QMap<QString, qint64> getDestIpCounts() const;
-    qint64 getTotalPackets() const; // <-- THÊM MỚI
+    qint64 getTotalPackets() const;
 
 public slots:
+    // (Hàm cũ xử lý 1 gói)
     void processPacket(const PacketData &packet);
+
+    // --- (THÊM MỚI) Hàm xử lý 1 LÔ (batch) ---
+    void processPackets(const QList<PacketData> &packetBatch);
+
     void clear();
 
 private:
     // --- 4 BỘ ĐẾM ---
-    qint64 m_totalPackets; // <-- THÊM MỚI
+    qint64 m_totalPackets;
     QMap<QString, qint64> m_protocolCounts;
     QMap<QString, qint64> m_sourceIpCounts;
     QMap<QString, qint64> m_destIpCounts;

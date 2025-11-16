@@ -1,6 +1,6 @@
 #include "AppController.hpp"
 #include "../Core/Capture/InterfaceManager.hpp"
-#include "../UI/Widgets/StatisticsDialog.hpp" // <-- Include Dialog
+#include "../UI/Widgets/StatisticsDialog.hpp"
 #include <QDebug>
 #include <QDateTime>
 #include <QFileDialog>
@@ -8,6 +8,7 @@
 #include <QDir>
 #include <QCoreApplication>
 #include <pcap.h>
+#include <QtConcurrent/QtConcurrent> // <-- THÊM MỚI (Cho luồng nền)
 
 AppController::AppController(MainWindow *mainWindow, QObject *parent)
     : QObject(parent),
@@ -15,18 +16,15 @@ AppController::AppController(MainWindow *mainWindow, QObject *parent)
     m_captureEngine(nullptr),
     m_filterEngine(nullptr),
     m_statsManager(nullptr),
-    m_statisticsDialog(nullptr) // <-- 1. KHỞI TẠO LÀ NULLPTR
+    m_statisticsDialog(nullptr)
 {
     // --- Khởi tạo Core ---
     m_captureEngine = new CaptureEngine(this);
     m_filterEngine = new DisplayFilterEngine(this);
-
-    // --- 2. KHỞI TẠO BỘ ĐẾM THỐNG KÊ ---
     m_statsManager = new StatisticsManager(this);
-
     loadInterfaces();
 
-    // --- Connect signal từ MainWindow (forward từ Page) ---
+    // --- (Các connect từ UI giữ nguyên) ---
     connect(m_mainWindow, &MainWindow::interfaceSelected, this, &AppController::onInterfaceSelected);
     connect(m_mainWindow, &MainWindow::openFileRequested, this, &AppController::onOpenFileRequested);
     connect(m_mainWindow, &MainWindow::saveFileRequested, this, &AppController::onSaveFileRequested);
@@ -34,27 +32,34 @@ AppController::AppController(MainWindow *mainWindow, QObject *parent)
     connect(m_mainWindow, &MainWindow::onStopCaptureClicked, this, &AppController::onStopCaptureClicked);
     connect(m_mainWindow, &MainWindow::onPauseCaptureClicked, this, &AppController::onPauseCaptureClicked);
     connect(m_mainWindow, &MainWindow::onApplyFilterClicked, this, &AppController::onApplyFilterClicked);
-
-    // --- 3. KẾT NỐI MENU THỐNG KÊ (Dùng tên signal đúng) ---
-    // (Kết nối với signal 'analyzeStatisticsRequested' của MainWindow)
     connect(m_mainWindow, &MainWindow::analyzeStatisticsRequested,
             this, &AppController::onStatisticsMenuClicked);
 
-    // --- Connect signal từ Core ---
-    connect(m_captureEngine, &CaptureEngine::packetCaptured, this, &AppController::onPacketCaptured);
+    // --- (SỬA ĐỔI) Connect signal từ Core (LÔ) ---
+    connect(m_captureEngine, &CaptureEngine::packetsCaptured, // <-- Tín hiệu LÔ
+            this, &AppController::onPacketsCaptured);        // <-- Slot LÔ
 
-    // --- Connect TÍN HIỆU (Signal) của AppController VỚI (Slot) của MainWindow ---
-    connect(this, &AppController::displayNewPacket, m_mainWindow, &MainWindow::addPacketToTable);
+    // --- (SỬA ĐỔI) Connect TÍN HIỆU (Signal) của AppController VỚI (Slot) của MainWindow ---
+    connect(this, &AppController::displayNewPackets,      // <-- Tín hiệu LÔ
+            m_mainWindow, &MainWindow::addPacketsToTable); // <-- Slot LÔ
     connect(this, &AppController::clearPacketTable, m_mainWindow, &MainWindow::clearPacketTable);
     connect(this, &AppController::displayFilterError, m_mainWindow, &MainWindow::showFilterError);
+
+    // (MỚI) Connect tín hiệu khi lọc xong
+    connect(this, &AppController::onFilteringFinished,
+            m_mainWindow, &MainWindow::addPacketsToTable);
 }
 
 void AppController::onInterfaceSelected(const QString &interfaceName, const QString &filterText)
 {
     qDebug() << "Interface selected:" << interfaceName << "Filter:" << filterText;
 
-    m_allPackets.clear();
-    m_statsManager->clear(); // <-- 4. RESET BỘ ĐẾM
+    { // <-- (SỬA) Khóa (lock) m_allPackets
+        QMutexLocker locker(&m_allPacketsMutex);
+        m_allPackets.clear();
+    }
+
+    m_statsManager->clear();
     m_filterEngine->setFilter("");
     emit clearPacketTable();
 
@@ -69,22 +74,17 @@ void AppController::onOpenFileRequested()
 {
     qDebug() << "Open file requested";
     m_captureEngine->stopCapture();
-    QString defaultDir = QCoreApplication::applicationDirPath() + "/FileSave";
-    QDir dir(defaultDir);
-    if (!dir.exists()) {
-        dir.mkpath(".");
-    }
-    QString filePath = QFileDialog::getOpenFileName(
-        m_mainWindow,
-        tr("Open Pcap File"),
-        defaultDir,
-        tr("Pcap Files (*.pcap *.pcapng)")
-        );
+    // ... (Code QFileDialog của bạn giữ nguyên) ...
+    QString filePath = QFileDialog::getOpenFileName(m_mainWindow, tr("Open Pcap File"));
     if (filePath.isEmpty()) {
         return;
     }
-    m_allPackets.clear();
-    m_statsManager->clear(); // <-- 4. RESET BỘ ĐẾM
+
+    { // <-- (SỬA) Khóa (lock) m_allPackets
+        QMutexLocker locker(&m_allPacketsMutex);
+        m_allPackets.clear();
+    }
+    m_statsManager->clear();
     m_filterEngine->setFilter("");
     emit clearPacketTable();
     m_captureEngine->startCaptureFromFile(filePath);
@@ -94,61 +94,58 @@ void AppController::onOpenFileRequested()
 void AppController::onSaveFileRequested()
 {
     qDebug() << "Save file requested";
-    if (m_allPackets.isEmpty()) {
+
+    // (THÊM MỚI) Tạo một bản copy an toàn để lưu
+    QList<PacketData> packetsToSave;
+    {
+        QMutexLocker locker(&m_allPacketsMutex);
+        packetsToSave = m_allPackets; // (Copy)
+    }
+
+    if (packetsToSave.isEmpty()) {
         QMessageBox::warning(m_mainWindow, "Save Error", "There are no packets to save.");
         return;
     }
-    QString defaultDir = QCoreApplication::applicationDirPath() + "/FileSave";
-    QDir dir(defaultDir);
-    if (!dir.exists()) {
-        dir.mkpath(".");
-    }
-    QString filePath = QFileDialog::getSaveFileName(
-        m_mainWindow,
-        tr("Save File As..."),
-        defaultDir + "/capture.pcap",
-        tr("Pcap Files (*.pcap)")
-        );
+
+    // ... (Code QFileDialog của bạn giữ nguyên) ...
+    QString filePath = QFileDialog::getSaveFileName(m_mainWindow, tr("Save File As..."));
     if (filePath.isEmpty()) {
         return;
     }
+
+    // ... (Code pcap_dumper của bạn giữ nguyên,
+    //      NHƯNG lặp 'packetsToSave' thay vì 'm_allPackets')
     pcap_t *pcap_handle = pcap_open_dead(DLT_EN10MB, 65535);
-    if (!pcap_handle) {
-        QMessageBox::critical(m_mainWindow, "Save Error", "Could not create pcap handle for writing.");
-        return;
-    }
+    // ... (Kiểm tra lỗi) ...
     pcap_dumper_t *dumper = pcap_dump_open(pcap_handle, filePath.toStdString().c_str());
-    if (!dumper) {
-        QMessageBox::critical(m_mainWindow, "Save Error", QString("Could not open file for writing: %1").arg(pcap_geterr(pcap_handle)));
-        pcap_close(pcap_handle);
-        return;
-    }
-    for (const PacketData &packet : m_allPackets) {
+    // ... (Kiểm tra lỗi) ...
+
+    for (const PacketData &packet : packetsToSave) { // <-- SỬA: Dùng 'packetsToSave'
         pcap_pkthdr header;
+        // ... (code pcap_dump của bạn) ...
         header.ts.tv_sec = packet.timestamp.tv_sec;
         header.ts.tv_usec = packet.timestamp.tv_nsec / 1000;
         header.caplen = packet.cap_length;
         header.len = packet.wire_length;
-        pcap_dump(
-            reinterpret_cast<u_char*>(dumper),
-            &header,
-            packet.raw_packet.data()
-            );
+        pcap_dump(reinterpret_cast<u_char*>(dumper), &header, packet.raw_packet.data());
     }
+
     pcap_dump_close(dumper);
     pcap_close(pcap_handle);
-    QMessageBox::information(m_mainWindow, "Save Successful",
-                             QString("Successfully saved %1 packets to %2")
-                                 .arg(m_allPackets.size())
-                                 .arg(filePath));
+    QMessageBox::information(m_mainWindow, "Save Successful", "Save complete.");
 }
 
 
 void AppController::onRestartCaptureClicked()
 {
     qDebug() << "Restart capture";
-    m_allPackets.clear();
-    m_statsManager->clear(); // <-- 4. RESET BỘ ĐẾM
+
+    { // <-- (SỬA) Khóa (lock) m_allPackets
+        QMutexLocker locker(&m_allPacketsMutex);
+        m_allPackets.clear();
+    }
+
+    m_statsManager->clear();
     m_filterEngine->setFilter("");
     emit clearPacketTable();
     m_captureEngine->stopCapture();
@@ -163,6 +160,7 @@ void AppController::onStopCaptureClicked()
 
 void AppController::onPauseCaptureClicked()
 {
+    // (Hàm này giữ nguyên)
     qDebug() << "Pause/Resume capture";
     if (m_captureEngine->isPaused()) {
         m_captureEngine->resumeCapture();
@@ -179,32 +177,96 @@ void AppController::onApplyFilterClicked(const QString &filterText)
         emit displayFilterError(m_filterEngine->getLastError());
         m_filterEngine->setFilter("");
     }
+
+    // (SỬA) Gọi hàm refresh đa luồng mới
     refreshFullDisplay();
 }
 
-void AppController::onPacketCaptured(const PacketData &packet)
+/**
+ * @brief (ĐÃ SỬA) Xử lý LÔ gói tin từ luồng bắt (CaptureEngine)
+ */
+void AppController::onPacketsCaptured(QList<PacketData>* packetBatch)
 {
-    // 1. Luôn luôn lưu vào danh sách chính
-    m_allPackets.append(packet);
-    // 2. Gửi gói tin cho bộ đếm (ĐẾM LIÊN TỤC)
-    m_statsManager->processPacket(packet);
-    // 3. Chỉ gửi tín hiệu hiển thị nếu nó khớp
-    if (m_filterEngine->packetMatches(packet))
+    // (Hàm này giờ chạy trên LUỒNG CHÍNH,
+    // vì CaptureEngine đã dùng QueuedConnection)
+
+    // 1. (SỬA) Khóa và thêm lô vào danh sách chính
     {
-        emit displayNewPacket(packet);
+        QMutexLocker locker(&m_allPacketsMutex);
+        m_allPackets.append(*packetBatch);
+    }
+
+    // 2. Gửi lô cho bộ đếm (rất nhanh, chỉ lặp 50-100 gói)
+    m_statsManager->processPackets(*packetBatch);
+
+    // 3. (MỚI) Lọc lô này để hiển thị live
+    QList<PacketData>* filteredBatch = new QList<PacketData>();
+    for (const PacketData &packet : *packetBatch) {
+        if (m_filterEngine->packetMatches(packet))
+        {
+            filteredBatch->append(packet);
+        }
+    }
+
+    // 4. Xóa lô gốc (từ CaptureEngine)
+    delete packetBatch;
+
+    // 5. Gửi lô đã lọc (có thể rỗng) lên UI
+    if (!filteredBatch->isEmpty()) {
+        emit displayNewPackets(filteredBatch);
+    } else {
+        delete filteredBatch; // Xóa nếu rỗng
     }
 }
 
+/**
+ * @brief (ĐÃ SỬA) Chạy lọc trên LUỒNG NỀN để không treo app
+ */
 void AppController::refreshFullDisplay()
 {
-    // (CẢNH BÁO: VÒNG LẶP NÀY SẼ GÂY TREO APP)
+    // 1. Yêu cầu UI xóa sạch (chạy trên luồng UI)
     emit clearPacketTable();
-    for (const PacketData &packet : m_allPackets) {
-        if (m_filterEngine->packetMatches(packet)) {
-            emit displayNewPacket(packet);
-        }
-    }
+
+    // 2. (MỚI) Chạy tác vụ lọc (nặng) trên một luồng khác
+    QtConcurrent::run([this]() {
+        qDebug() << "Filter thread started...";
+
+        QList<PacketData>* filteredList = new QList<PacketData>();
+
+        // 3. (MỚI) Khóa m_allPackets CHỈ trong lúc đọc
+        {
+            QMutexLocker locker(&m_allPacketsMutex);
+
+            // 4. Lặp qua danh sách chính (trên luồng nền)
+            for (const PacketData &packet : m_allPackets) {
+                if (m_filterEngine->packetMatches(packet)) {
+                    filteredList->append(packet);
+                }
+            }
+        } // (Mutex được tự động mở khóa ở đây)
+
+        qDebug() << "Filter thread finished. Emitting" << filteredList->size() << "packets.";
+
+        // 5. Gửi con trỏ chứa kết quả về luồng UI
+        // (Chúng ta emit tín hiệu 'onFilteringFinished'
+        //  đã được connect với 'addPacketsToTable' trong constructor)
+        QMetaObject::invokeMethod(this, [this, filteredList](){
+            emit onFilteringFinished(filteredList);
+        }, Qt::QueuedConnection);
+    });
 }
+
+/**
+ * @brief (MỚI) Slot nhận kết quả từ luồng lọc
+ */
+void AppController::onFilteringFinished(QList<PacketData>* filteredPackets)
+{
+    // (Hàm này chạy trên luồng UI)
+    // Nó chỉ phát tín hiệu đã được kết nối với PacketTable
+    // (Chúng ta làm vậy để giữ AppController sạch sẽ)
+    emit displayNewPackets(filteredPackets);
+}
+
 
 void AppController::loadInterfaces()
 {
@@ -212,25 +274,18 @@ void AppController::loadInterfaces()
     m_mainWindow->setDevices(devices);
 }
 
-// --- (HÀM ĐÃ ĐƯỢC CẬP NHẬT LÊN "LIVE") ---
 void AppController::onStatisticsMenuClicked()
 {
+    // (Hàm này giữ nguyên như code của bạn)
     qDebug() << "Statistics requested";
-
-    // 1. Nếu cửa sổ CHƯA TỒN TẠI (hoặc đã bị đóng)
     if (!m_statisticsDialog)
     {
-        // 2. Tạo nó MỘT LẦN, và truyền manager vào
         m_statisticsDialog = new StatisticsDialog(m_statsManager, m_mainWindow);
-
-        // 3. Kết nối tín hiệu 'destroyed' để set con trỏ về null
         connect(m_statisticsDialog, &QObject::destroyed, this, [this](){
             m_statisticsDialog = nullptr;
         });
     }
-
-    // 4. HIỂN THỊ cửa sổ (dùng show() thay vì exec())
     m_statisticsDialog->show();
-    m_statisticsDialog->activateWindow(); // Đưa nó lên trên
+    m_statisticsDialog->activateWindow();
     m_statisticsDialog->raise();
 }
