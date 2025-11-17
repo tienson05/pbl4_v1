@@ -1,17 +1,19 @@
 #include <QApplication>
 #include "../UI/MainWindow.hpp"
-#include "../Controller/AppController.hpp"
+#include "../Controller/AppController.hpp""
+#include "../Common/MacResolver.hpp"
 
 int main(int argc, char *argv[])
+
 {
     QApplication app(argc, argv);
+    MacResolver::instance().loadDatabase("/home/toan/Qt/Project/pbl4_v1/src/App/manuf");
 
     // 1️⃣ Tạo MainWindow
     MainWindow mainWindow;
 
     // 2️⃣ Tạo AppController, truyền MainWindow
     AppController controller(&mainWindow);
-
     // 3️⃣ Hiển thị MainWindow
     mainWindow.show();
 
