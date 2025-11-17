@@ -18,26 +18,29 @@ static std::string to_hex(T val) {
     return ss.str();
 }
 
-// Hàm trợ giúp lấy mô tả Type
-static std::string getTypeDescription(uint8_t type) {
+/**
+ * @brief (ĐÃ SỬA) Hàm static công khai
+ * Trả về mô tả của ICMP type.
+ */
+std::string ICMPParser::getTypeString(uint8_t type) {
     switch (type) {
     case 0:  return "Echo Reply";
     case 3:  return "Destination Unreachable";
     case 5:  return "Redirect";
     case 8:  return "Echo (ping) Request";
     case 11: return "Time Exceeded";
-    default: return "Unknown";
+    default: return "Unknown Type";
     }
 }
 
 // --- Triển khai (Implementation) ---
 
 bool ICMPParser::parse(ICMPHeader& icmp, const uint8_t* data, size_t len) {
-    // Header ICMP cơ bản là 8 bytes (cho các loại phổ biến)
-    if (len < 8) {
-        // Một số loại ICMP (như Destination Unreachable) có thể chỉ có 4 byte
-        // nhưng chúng ta sẽ giả định 8 byte để lấy ID/Sequence
-        if (len < 4) return false;
+
+    // (SỬA) ICMP Echo/Reply (ping) cần ít nhất 8 byte
+    // Các loại khác (ví dụ: Destination Unreachable) cần ít nhất 4 byte
+    if (len < 4) {
+        return false;
     }
 
     // Ép kiểu dữ liệu thô sang cấu trúc ICMP chuẩn của hệ thống
@@ -48,8 +51,8 @@ bool ICMPParser::parse(ICMPHeader& icmp, const uint8_t* data, size_t len) {
     icmp.code     = icmp_hdr->code;
     icmp.checksum = ntohs(icmp_hdr->checksum);
 
-    // Chỉ các loại Echo/Reply mới có ID và Sequence
-    if (icmp.type == ICMP_ECHO || icmp.type == ICMP_ECHOREPLY) {
+    // (SỬA) Chỉ đọc ID/Sequence nếu đủ 8 byte VÀ type là Echo/Reply
+    if ((icmp.type == ICMP_ECHO || icmp.type == ICMP_ECHOREPLY) && len >= 8) {
         icmp.id       = ntohs(icmp_hdr->un.echo.id);
         icmp.sequence = ntohs(icmp_hdr->un.echo.sequence);
     } else {
@@ -64,12 +67,13 @@ void ICMPParser::appendTreeView(std::string& tree, int depth, const ICMPHeader& 
     appendTree(tree, depth, "Internet Control Message Protocol");
     depth++;
 
-    appendTree(tree, depth, "Type: " + std::to_string(icmp.type) + " (" + getTypeDescription(icmp.type) + ")");
+    // (SỬA) Gọi hàm static getTypeString
+    appendTree(tree, depth, "Type: " + std::to_string(icmp.type) + " (" + getTypeString(icmp.type) + ")");
     appendTree(tree, depth, "Code: " + std::to_string(icmp.code));
     appendTree(tree, depth, "Checksum: " + to_hex(icmp.checksum));
 
     if (icmp.type == ICMP_ECHO || icmp.type == ICMP_ECHOREPLY) {
-        appendTree(tree, depth, "Identifier (ID): " + std::to_string(icmp.id));
-        appendTree(tree, depth, "Sequence Number: " + std::to_string(icmp.sequence));
+        appendTree(tree, depth, "Identifier (ID): " + std::to_string(icmp.id) + " (" + to_hex(icmp.id) + ")");
+        appendTree(tree, depth, "Sequence Number: " + std::to_string(icmp.sequence) + " (" + to_hex(icmp.sequence) + ")");
     }
 }
