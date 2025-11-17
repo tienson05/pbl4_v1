@@ -16,7 +16,14 @@
 #include <sstream>
 #include <QRegularExpression>
 #include <QTimer> // <-- THÊM MỚI
-
+#include <QTextBlock>
+// --- (MỚI) HÀM HELPER ĐỂ CHUYỂN SANG HEX (GIỐNG WIRESHARK) ---
+template <typename T>
+static QString toHex(T val, int width = 4) {
+    std::stringstream ss;
+    ss << "0x" << std::hex << std::setw(width) << std::setfill('0') << static_cast<int>(val);
+    return QString::fromStdString(ss.str());
+}
 // === (MỚI) CÁC THAM SỐ TỐI ƯU HÓA ===
 const int CHUNK_SIZE = 500; // Xử lý 500 gói mỗi lần
 const int TIMER_INTERVAL_MS = 30; // ~33 FPS
@@ -27,6 +34,7 @@ PacketTable::PacketTable(QWidget *parent)
     setupUI();
     // Kết nối sự kiện click dòng
     connect(packetList, &QTableWidget::itemClicked, this, &PacketTable::onPacketRowSelected);
+    connect(packetDetails, &QTreeWidget::itemClicked, this, &PacketTable::onDetailRowSelected);
 
     // --- (MỚI) THIẾT LẬP BỘ ĐỆM CHỐNG LAG ---
     m_updateTimer = new QTimer(this);
@@ -68,6 +76,8 @@ void PacketTable::setupUI()
     packetBytes = new QTextEdit(this);
     packetBytes->setFont(QFont("Courier", 9));
     packetBytes->setReadOnly(true);
+    // (THÊM MỚI) Cho phép hiển thị HTML
+    packetBytes->setAcceptRichText(true);
     QSplitter *bottomSplitter = new QSplitter(Qt::Horizontal, this);
     bottomSplitter->addWidget(packetDetails);
     bottomSplitter->addWidget(packetBytes);
@@ -86,6 +96,8 @@ void PacketTable::clearData()
     packetDetails->clear();
     packetBytes->clear();
     m_packetBuffer.clear(); // <-- (MỚI) Xóa luôn hàng đợi
+    m_currentSelectedPacket.clear(); // (MỚI) Xóa gói tin đang chọn
+
 }
 
 /**
@@ -206,121 +218,228 @@ void PacketTable::insertPacketRow(const PacketData &packet)
 // === KHI CLICK DÒNG ===
 void PacketTable::onPacketRowSelected(QTableWidgetItem *item)
 {
+    if (!item) return; // (Thêm Guard)
     int row = item->row();
     QTableWidgetItem *hidden = packetList->item(row, 7); // (Đã đúng: Cột 7)
     if (!hidden) return;
-    PacketData packet = hidden->data(Qt::UserRole).value<PacketData>();
-    showPacketDetails(packet);
-    showHexDump(packet);
+m_currentSelectedPacket = hidden->data(Qt::UserRole).value<PacketData>();
+    showPacketDetails(m_currentSelectedPacket);
+    showHexDump(m_currentSelectedPacket,-1,0);
 }
+// === (MỚI) SLOT ĐỂ TÔ ĐẬM ===
+void PacketTable::onDetailRowSelected(QTreeWidgetItem *item, int column)
+{
+    if (!item) return;
 
+    // 1. Lấy vị trí (offset) và độ dài (length) từ item
+    // (Chúng ta dùng UserRole + 1 và + 2 để lưu 2 giá trị)
+    QVariant offsetData = item->data(0, Qt::UserRole + 1);
+    QVariant lengthData = item->data(0, Qt::UserRole + 2);
+
+    if (offsetData.isValid() && lengthData.isValid()) {
+        int offset = offsetData.toInt();
+        int length = lengthData.toInt();
+
+        // 2. Gọi lại showHexDump với thông tin tô đậm
+        // (Chúng ta dùng m_currentSelectedPacket đã lưu)
+        showHexDump(m_currentSelectedPacket, offset, length);
+    } else {
+        // Nếu nhấp vào một mục cha (không có byte cụ thể),
+        // hiển thị hex không tô đậm
+        showHexDump(m_currentSelectedPacket, -1, 0);
+    }
+}
 // === HIỂN THỊ CHI TIẾT 4 TẦNG ===
+// === (HÀM ĐÃ ĐƯỢC NÂNG CẤP HOÀN TOÀN) ===
 void PacketTable::showPacketDetails(const PacketData &packet)
 {
-    // (Code này đã đúng từ file của bạn,
-    //  vì nó đã chứa logic hiển thị TSval)
     packetDetails->clear();
-    QTreeWidgetItem *root = new QTreeWidgetItem(packetDetails);
-    root->setText(0, QString("Frame %1: %2 bytes")
-                         .arg(packet.packet_id)
-                         .arg(packet.wire_length));
-    root->setExpanded(true);
 
+    // (Các offset (vị trí byte) được tính toán)
+    int eth_offset = 0;
+    int eth_len = 14; // (Độ dài mặc định)
+    int l3_offset = eth_offset + 14; // Mặc định của Ethernet
+    int l4_offset = -1;
+    int l7_offset = -1;
+    // --- TẦNG 1: FRAME ---
+    QTreeWidgetItem *root = new QTreeWidgetItem(packetDetails);
+    root->setText(0, QString("Frame %1: %2 bytes on wire (%3 bits), %4 bytes captured (%5 bits)")
+                         .arg(packet.packet_id)
+                         .arg(packet.wire_length)
+                         .arg(packet.wire_length * 8)
+                         .arg(packet.cap_length)
+                         .arg(packet.cap_length * 8));
+    root->setData(0, Qt::UserRole + 1, 0);
+    root->setData(0, Qt::UserRole + 2, packet.cap_length);
+    // Chuyển đổi timestamp
+    QDateTime timestamp = QDateTime::fromSecsSinceEpoch(packet.timestamp.tv_sec);
+    timestamp = timestamp.addMSecs(packet.timestamp.tv_nsec / 1000000);
+    // (Chúng ta dùng toLocalTime() để hiển thị múi giờ của người dùng)
+    addField(root, "Arrival Time", timestamp.toLocalTime().toString("MMM d, yyyy hh:mm:ss.zzz"));
+    addField(root, "Frame Number", QString::number(packet.packet_id));
+    addField(root, "Frame Length", QString("%1 bytes").arg(packet.wire_length));
+    addField(root, "Capture Length", QString("%1 bytes").arg(packet.cap_length));
+
+
+    // --- TẦNG 2: ETHERNET ---
     QTreeWidgetItem *eth = new QTreeWidgetItem(root);
     eth->setText(0, "Ethernet II");
-    addField(eth, "Destination", macToString(packet.eth.dest_mac));
-    addField(eth, "Source", macToString(packet.eth.src_mac));
-    addField(eth, "Type", QString("0x%1 (%2)")
-                              .arg(packet.eth.ether_type, 4, 16, QChar('0')).toUpper()
-                              .arg(getEtherTypeName(packet.eth.ether_type)));
+    eth->setData(0, Qt::UserRole + 1, eth_offset);
+    eth->setData(0, Qt::UserRole + 2, eth_len); // 14 byte
+    addField(eth, "Destination", macToString(packet.eth.dest_mac), eth_offset + 0, 6);
+    addField(eth, "Source", macToString(packet.eth.src_mac), eth_offset + 6, 6);
+    addField(eth, "Type", QString("%1 (%2)")
+                              .arg(toHex(packet.eth.ether_type))
+                              .arg(getEtherTypeName(packet.eth.ether_type)), eth_offset + 12, 2);
 
     if (packet.has_vlan) {
+        l3_offset += 4; // Bỏ qua 4 byte VLAN
         QTreeWidgetItem *vlan = new QTreeWidgetItem(root);
         vlan->setText(0, "802.1Q Virtual LAN");
-        addField(vlan, "TPID", QString("0x%1").arg(packet.vlan.tpid, 4, 16, QChar('0')));
-        addField(vlan, "Priority", QString::number((packet.vlan.tci >> 13) & 0x7));
-        addField(vlan, "DEI", QString::number((packet.vlan.tci >> 12) & 0x1));
-        addField(vlan, "VLAN ID", QString::number(packet.vlan.tci & 0xFFF));
+        addField(vlan, "TPID", toHex(packet.vlan.tpid), eth_offset + 14, 2);
+        addField(vlan, "TCI (Priority, DEI, ID)", toHex(packet.vlan.tci), eth_offset + 16, 2);
+        addField(vlan, "Type", QString("%1 (%2)")
+                                   .arg(toHex(packet.vlan.ether_type))
+                                   .arg(getEtherTypeName(packet.vlan.ether_type)), eth_offset + 18, 2);
     }
 
+    // --- TẦNG 3: IP/ARP ---
     if (packet.is_ipv4) {
+        int ip_hdr_len = packet.ipv4.ihl * 4;
+        l4_offset = l3_offset + ip_hdr_len;
         QTreeWidgetItem *ip = new QTreeWidgetItem(root);
         ip->setText(0, "Internet Protocol Version 4");
-        addField(ip, "Source", ipToString(packet.ipv4.src_ip));
-        addField(ip, "Destination", ipToString(packet.ipv4.dest_ip));
-        addField(ip, "Protocol", QString("%1 (%2)").arg(packet.ipv4.protocol).arg(getIpProtoName(packet.ipv4.protocol)));
-        addField(ip, "TTL", QString::number(packet.ipv4.ttl));
-        addField(ip, "Header Length", QString("%1 bytes").arg(packet.ipv4.ihl * 4));
+        ip->setData(0, Qt::UserRole + 1, l3_offset);
+        ip->setData(0, Qt::UserRole + 2, ip_hdr_len);
+        addField(ip, "Version/IHL", toHex(packet.ipv4.version << 4 | packet.ipv4.ihl, 2), l3_offset + 0, 1);
+        addField(ip, "Header Length", QString("%1 bytes (%2)").arg(packet.ipv4.ihl * 4).arg(packet.ipv4.ihl));
+        addField(ip, "Differentiated Services Field", toHex(packet.ipv4.tos, 2), l3_offset + 1, 1);
+        addField(ip, "Total Length", QString::number(packet.ipv4.total_length), l3_offset + 2, 2);
+        addField(ip, "Identification", toHex(packet.ipv4.id), l3_offset + 4, 2);
+
+        // Phân tích Flags
+        uint8_t flags_val = (packet.ipv4.flags_frag_offset >> 13) & 0x7;
+        QString flags_str = QString("0x%1 (").arg(flags_val, 1, 16);
+        if (flags_val & 0x2) flags_str += "Don't Fragment, ";
+        if (flags_val & 0x1) flags_str += "More Fragments, ";
+        if (!flags_str.contains(QChar(','))) flags_str += "No Flags"; else flags_str.chop(2); // Xóa ", "
+        flags_str += ")";
+        addField(ip, "Flags", flags_str);
+
+        addField(ip, "Flags/Fragment Offset", toHex(packet.ipv4.flags_frag_offset), l3_offset + 6, 2);
+            addField(ip, "Time to Live (TTL)", QString::number(packet.ipv4.ttl), l3_offset + 8, 1);
+        addField(ip, "Protocol", QString("%1 (%2)").arg(getIpProtoName(packet.ipv4.protocol)).arg(packet.ipv4.protocol), l3_offset + 9, 1);
+        addField(ip, "Header Checksum", toHex(packet.ipv4.header_checksum), l3_offset + 10, 2);
+        addField(ip, "Source Address", ipToString(packet.ipv4.src_ip), l3_offset + 12, 4);
+        addField(ip, "Destination Address", ipToString(packet.ipv4.dest_ip), l3_offset + 16, 4);
     }
     else if (packet.is_ipv6) {
         QTreeWidgetItem *ip = new QTreeWidgetItem(root);
         ip->setText(0, "Internet Protocol Version 6");
-        addField(ip, "Source", ipv6ToString(packet.ipv6.src_ip));
-        addField(ip, "Destination", ipv6ToString(packet.ipv6.dest_ip));
+        ip->setData(0, Qt::UserRole + 1, l3_offset);
+        ip->setData(0, Qt::UserRole + 2, 40);
+        addField(ip, "Source", ipv6ToString(packet.ipv6.src_ip), l3_offset + 8, 16);
+        addField(ip, "Destination", ipv6ToString(packet.ipv6.dest_ip), l3_offset + 24, 16);
         addField(ip, "Next Header", QString::number(packet.ipv6.next_header));
         addField(ip, "Hop Limit", QString::number(packet.ipv6.hop_limit));
     }
     else if (packet.is_arp) {
         QTreeWidgetItem *arp = new QTreeWidgetItem(root);
         arp->setText(0, "Address Resolution Protocol");
-        addField(arp, "Sender MAC", macToString(packet.arp.sender_mac));
-        addField(arp, "Sender IP", ipToString(packet.arp.sender_ip));
-        addField(arp, "Target MAC", macToString(packet.arp.target_mac));
-        addField(arp, "Target IP", ipToString(packet.arp.target_ip));
-        addField(arp, "Opcode", packet.arp.opcode == 1 ? "Request" : "Reply");
+        arp->setData(0, Qt::UserRole + 1, l3_offset);
+        arp->setData(0, Qt::UserRole + 2, 28); // 28 byte
+
+        addField(arp, "Hardware type", (packet.arp.hardware_type == 1 ? "Ethernet (1)" : QString::number(packet.arp.hardware_type)), l3_offset + 0, 2);
+        addField(arp, "Protocol type", QString("%1 (IPv4)").arg(toHex(packet.arp.protocol_type)), l3_offset + 2, 2);
+        addField(arp, "Hardware size", QString::number(packet.arp.hardware_size), l3_offset + 4, 1);
+        addField(arp, "Protocol size", QString::number(packet.arp.protocol_size), l3_offset + 5, 1);
+        addField(arp, "Opcode", packet.arp.opcode == 1 ? "Request (1)" : "Reply (2)", l3_offset + 6, 2);
+        addField(arp, "Sender MAC", macToString(packet.arp.sender_mac), l3_offset + 8, 6);
+        addField(arp, "Sender IP", ipToString(packet.arp.sender_ip), l3_offset + 14, 4);
+        addField(arp, "Target MAC", macToString(packet.arp.target_mac), l3_offset + 18, 6);
+        addField(arp, "Target IP", ipToString(packet.arp.target_ip), l3_offset + 24, 4);
     }
 
+    // --- TẦNG 4: TCP/UDP/ICMP ---
     if (packet.is_tcp) {
+        int tcp_hdr_len = packet.tcp.data_offset * 4;
+        l7_offset = l4_offset + tcp_hdr_len; // Tính offset Tầng 7
         QTreeWidgetItem *tcp = new QTreeWidgetItem(root);
         tcp->setText(0, "Transmission Control Protocol");
-        addField(tcp, "Source Port", QString::number(packet.tcp.src_port));
-        addField(tcp, "Destination Port", QString::number(packet.tcp.dest_port));
+        tcp->setData(0, Qt::UserRole + 1, l4_offset);
+        tcp->setData(0, Qt::UserRole + 2, tcp_hdr_len);
+        addField(tcp, "Source Port", QString::number(packet.tcp.src_port), l4_offset + 0, 2);
+        addField(tcp, "Destination Port", QString::number(packet.tcp.dest_port), l4_offset + 2, 2);
+        addField(tcp, "Sequence Number (Seq)", QString::number(packet.tcp.seq_num), l4_offset + 4, 4);
+        addField(tcp, "Acknowledgment Number (Ack)", QString::number(packet.tcp.ack_num), l4_offset + 8, 4);
+        addField(tcp, "Header Length", QString("%1 bytes (%2)").arg(tcp_hdr_len).arg(packet.tcp.data_offset), l4_offset + 12, 1);
+        addField(tcp, "Flags", toHex(packet.tcp.flags, 2), l4_offset + 13, 1);
+        addField(tcp, "Window Size", QString::number(packet.tcp.window), l4_offset + 14, 2);
+        addField(tcp, "Checksum", toHex(packet.tcp.checksum), l4_offset + 16, 2);
+        addField(tcp, "Urgent Pointer", QString::number(packet.tcp.urgent_pointer), l4_offset + 18, 2);
 
         QString flags;
-        if (packet.tcp.flags & TCPHeader::SYN) flags += "SYN ";
-        if (packet.tcp.flags & TCPHeader::ACK) flags += "ACK ";
-        if (packet.tcp.flags & TCPHeader::FIN) flags += "FIN ";
-        if (packet.tcp.flags & TCPHeader::RST) flags += "RST ";
-        if (packet.tcp.flags & TCPHeader::PSH) flags += "PSH ";
-        addField(tcp, "Flags", flags.trimmed().isEmpty() ? "None" : flags.trimmed());
+        if (packet.tcp.flags & TCPHeader::SYN) flags += "SYN, ";
+        if (packet.tcp.flags & TCPHeader::ACK) flags += "ACK, ";
+        if (packet.tcp.flags & TCPHeader::FIN) flags += "FIN, ";
+        if (packet.tcp.flags & TCPHeader::RST) flags += "RST, ";
+        if (packet.tcp.flags & TCPHeader::PSH) flags += "PSH, ";
+        if (packet.tcp.flags & TCPHeader::URG) flags += "URG, ";
+        if (!flags.isEmpty()) flags.chop(2); // Xóa ", "
+        if (packet.tcp.options_len > 0) {
+            QTreeWidgetItem *opts = new QTreeWidgetItem(tcp);
+            opts->setText(0, "Options");
+            opts->setData(0, Qt::UserRole + 1, l4_offset + 20);
+            opts->setData(0, Qt::UserRole + 2, packet.tcp.options_len);
+            addField(opts, QString("(%1 bytes)").arg(packet.tcp.options_len), "", l4_offset + 20, packet.tcp.options_len);
 
-        addField(tcp, "Sequence Number", QString::number(packet.tcp.seq_num));
-        addField(tcp, "Window Size", QString::number(packet.tcp.window));
-
-        if (packet.tcp.has_timestamp) {
-            QTreeWidgetItem *ts = new QTreeWidgetItem(tcp);
-            ts->setText(0, "Options: (Timestamps)");
-            addField(ts, "Timestamp value", QString::number(packet.tcp.ts_val));
-            addField(ts, "Timestamp echo reply", QString::number(packet.tcp.ts_ecr));
-        }
+            if (packet.tcp.has_timestamp) {
+                // (Không gán offset/length cho TSval vì chúng ta chưa tìm offset chính xác)
+                QTreeWidgetItem *ts = new QTreeWidgetItem(opts);
+                ts->setText(0, "Timestamps");
+                addField(ts, "Timestamp value (TSval)", QString::number(packet.tcp.ts_val));
+                addField(ts, "Timestamp echo reply (TSecr)", QString::number(packet.tcp.ts_ecr));
+            }
     }
     else if (packet.is_udp) {
-        QTreeWidgetItem *udp = new QTreeWidgetItem(root);
-        udp->setText(0, "User Datagram Protocol");
-        addField(udp, "Source Port", QString::number(packet.udp.src_port));
-        addField(udp, "Destination Port", QString::number(packet.udp.dest_port));
-        addField(udp, "Length", QString::number(packet.udp.length));
+            l7_offset = l4_offset + 8; // UDP Header luôn là 8 byte
+            QTreeWidgetItem *udp = new QTreeWidgetItem(root);
+            udp->setText(0, "User Datagram Protocol");
+            udp->setData(0, Qt::UserRole + 1, l4_offset);
+            udp->setData(0, Qt::UserRole + 2, 8); // 8 byte
+            addField(udp, "Source Port", QString::number(packet.udp.src_port), l4_offset + 0, 2);
+            addField(udp, "Destination Port", QString::number(packet.udp.dest_port), l4_offset + 2, 2);
+            addField(udp, "Length", QString::number(packet.udp.length), l4_offset + 4, 2);
+            addField(udp, "Checksum", toHex(packet.udp.checksum), l4_offset + 6, 2);
     }
     else if (packet.is_icmp) {
+        int icmp_len = packet.cap_length - l4_offset; // (Độ dài phần còn lại)
+        l7_offset = l4_offset + 8; // (Giả sử 8 byte cho Ping)
         QTreeWidgetItem *icmp = new QTreeWidgetItem(root);
         icmp->setText(0, "Internet Control Message Protocol");
-
-        // (Sử dụng hàm static mới từ ICMPParser)
+        icmp->setData(0, Qt::UserRole + 1, l4_offset);
+        icmp->setData(0, Qt::UserRole + 2, icmp_len);
         QString typeStr = QString::fromStdString(ICMPParser::getTypeString(packet.icmp.type));
-        addField(icmp, "Type", QString("%1 (%2)").arg(packet.icmp.type).arg(typeStr));
-        addField(icmp, "Code", QString::number(packet.icmp.code));
-        addField(icmp, "Checksum", QString("0x%1").arg(packet.icmp.checksum, 4, 16, QChar('0')));
+        addField(icmp, "Type", QString("%1 (%2)").arg(packet.icmp.type).arg(typeStr), l4_offset + 0, 1);
+        addField(icmp, "Code", QString::number(packet.icmp.code), l4_offset + 1, 1);
+        addField(icmp, "Checksum", toHex(packet.icmp.checksum), l4_offset + 2, 2);
 
-        // (Chỉ hiển thị ID/Seq nếu là Echo)
         if (packet.icmp.type == 0 || packet.icmp.type == 8) {
-            addField(icmp, "Identifier (id)", QString("0x%1 (%2)").arg(packet.icmp.id, 4, 16, QChar('0')).arg(packet.icmp.id));
-            addField(icmp, "Sequence Number (seq)", QString("0x%1 (%2)").arg(packet.icmp.sequence, 4, 16, QChar('0')).arg(packet.icmp.sequence));
+            addField(icmp, "Identifier (id)", toHex(packet.icmp.id), l4_offset + 4, 2);
+            addField(icmp, "Sequence Number (seq)", toHex(packet.icmp.sequence), l4_offset + 6, 2);
         }
     }
+}
 
-    if (!packet.app.protocol.empty()) {
+    // --- TẦNG 7: APPLICATION ---
+    if (l7_offset != -1) {
+        int app_len = packet.cap_length - l7_offset;
+        if (app_len > 0) {
         QTreeWidgetItem *app = new QTreeWidgetItem(root);
         app->setText(0, QString::fromStdString("Application: " + packet.app.protocol));
+        app->setData(0, Qt::UserRole + 1, l7_offset);
+        app->setData(0, Qt::UserRole + 2, app_len);
+        addField(app, QString("Data (%1 bytes)").arg(app_len), "", l7_offset, app_len);
         if (packet.app.is_http_request) {
             addField(app, "Request", QString::fromStdString(packet.app.http_method + " " + packet.app.http_path));
             if (!packet.app.http_host.empty())
@@ -335,34 +454,86 @@ void PacketTable::showPacketDetails(const PacketData &packet)
             addField(app, "Query", QString::fromStdString(packet.app.dns_name));
             addField(app, "Type", QString::number(packet.app.dns_type));
         }
+        // (Hiển thị info QUIC nếu có)
+        else if (!packet.app.info.empty()) {
+            addField(app, "Info", QString::fromStdString(packet.app.info));
+        }
     }
-
+    }
     packetDetails->expandAll();
 }
-
 // === HEX DUMP ===
-void PacketTable::showHexDump(const PacketData &packet)
+void PacketTable::showHexDump(const PacketData &packet, int highlight_offset, int highlight_len)
 {
-    std::ostringstream oss;
+    // (Dùng 'data' từ gói tin đã lưu, không phải m_currentSelectedPacket)
     const auto& data = packet.raw_packet;
     size_t len = data.size();
+
+    // (Dùng QFont thay vì setFont)
+    QFont font("Courier", 9);
+    packetBytes->setFont(font);
+
+    // (Dùng HTML để tô đậm)
+    std::stringstream oss_html;
+    oss_html << "<html><head><style>"
+             << "body { font-family: 'Courier'; font-size: 9pt; white-space: pre; }"
+             // (Màu tô đậm giống Wireshark)
+             << ".hl { background-color: #a0c0f0; color: black; }"
+             << "</style></head><body>";
+
     for (size_t i = 0; i < len; i += 16) {
-        oss << QString("%1").arg(i, 8, 16, QChar('0')).toUpper().toStdString() << "  ";
+        // Offset
+        oss_html << "<b>" << QString("%1").arg(i, 8, 16, QChar('0')).toUpper().toStdString() << "</b>  ";
+
+        // Hex
         for (size_t j = 0; j < 16; ++j) {
-            if (i + j < len)
-                oss << std::hex << std::setw(2) << std::setfill('0') << (int)data[i + j] << " ";
-            else
-                oss << "   ";
-            if (j == 7) oss << " ";
+            size_t idx = i + j;
+            if (idx < len) {
+                // (KIỂM TRA TÔ ĐẬM)
+                bool highlight = (highlight_offset != -1) &&
+                                 (idx >= highlight_offset) &&
+                                 (idx < (highlight_offset + highlight_len));
+
+                if (highlight) oss_html << "<span class=\"hl\">";
+                oss_html << std::hex << std::setw(2) << std::setfill('0') << (int)data[idx] << " ";
+                if (highlight) oss_html << "</span>";
+            }
+            else {
+                oss_html << "   ";
+            }
+            if (j == 7) oss_html << " ";
         }
-        oss << " ";
-        for (size_t j = 0; j < 16 && i + j < len; ++j) {
-            char c = data[i + j];
-            oss << (c >= 32 && c <= 126 ? c : '.');
+
+        // ASCII
+        oss_html << " ";
+        for (size_t j = 0; j < 16 && (i + j) < len; ++j) {
+            size_t idx = i + j;
+            char c = data[idx];
+
+            // (KIỂM TRA TÔ ĐẬM)
+            bool highlight = (highlight_offset != -1) &&
+                             (idx >= highlight_offset) &&
+                             (idx < (highlight_offset + highlight_len));
+
+            if (highlight) oss_html << "<span class=\"hl\">";
+
+            // (Chuyển đổi ký tự HTML đặc biệt)
+            if (c >= 32 && c <= 126) {
+                if (c == '<') oss_html << "&lt;";
+                else if (c == '>') oss_html << "&gt;";
+                else if (c == '&') oss_html << "&amp;";
+                else oss_html << c;
+            } else {
+                oss_html << ".";
+            }
+
+            if (highlight) oss_html << "</span>";
         }
-        oss << "\n";
+        oss_html << "<br>"; // Dùng HTML line break
     }
-    packetBytes->setText(QString::fromStdString(oss.str()));
+
+    oss_html << "</body></html>";
+    packetBytes->setHtml(QString::fromStdString(oss_html.str()));
 }
 
 // === HÀM HỖ TRỢ ===
@@ -486,10 +657,15 @@ QString PacketTable::getInfo(const PacketData &p)
     return QString("Len=%1").arg(p.cap_length);
 }
 
-void PacketTable::addField(QTreeWidgetItem *parent, const QString &name, const QString &value)
+void PacketTable::addField(QTreeWidgetItem *parent, const QString &name, const QString &value, int offset, int length)
 {
     QTreeWidgetItem *item = new QTreeWidgetItem(parent);
     item->setText(0, name + ": " + value);
+
+    // (MỚI) Lưu siêu dữ liệu (metadata) vào item
+    // (Chúng ta dùng UserRole + 1 và + 2 để lưu 2 giá trị)
+    item->setData(0, Qt::UserRole + 1, offset);
+    item->setData(0, Qt::UserRole + 2, length);
 }
 
 QString PacketTable::macToString(const std::array<uint8_t, 6>& mac)
