@@ -114,8 +114,42 @@ void PacketTable::clearData()
  * @brief (ĐÃ SỬA) Slot nhận MỘT gói tin
  * Chỉ thêm vào hàng đợi. QTimer sẽ xử lý.
  */
+void PacketTable::applyFilter(const QString& filterText)
+{
+    m_currentFilter = filterText;
+    refreshTable(); // Vẽ lại bảng
+}
+// --- (MỚI) HÀM VẼ LẠI BẢNG KHI LỌC ---
+void PacketTable::refreshTable()
+{
+    // Tối ưu: Tắt vẽ khi đang update
+    packetList->setUpdatesEnabled(false);
+    packetList->setSortingEnabled(false);
+
+    packetList->setRowCount(0); // Xóa trắng bảng hiển thị
+
+    // Duyệt lại kho dữ liệu gốc
+    for (const auto& packet : m_allPackets) {
+        // Dùng Engine để kiểm tra
+        if (m_filterEngine.match(packet, m_currentFilter)) {
+            insertPacketRow(packet);
+        }
+    }
+
+    // Bật lại vẽ
+    packetList->setSortingEnabled(true);
+    packetList->setUpdatesEnabled(true);
+
+    if (m_isUserAtBottom) {
+        packetList->scrollToBottom();
+    }
+}
 void PacketTable::onPacketReceived(const PacketData &packet)
 {
+    // 1. Luôn lưu vào kho tổng (quan trọng cho Display Filter)
+    m_allPackets.append(packet);
+
+    // 2. Thêm vào hàng đợi hiển thị
     m_packetBuffer.append(packet);
 }
 
@@ -125,10 +159,11 @@ void PacketTable::onPacketReceived(const PacketData &packet)
  */
 void PacketTable::onPacketsReceived(QList<PacketData>* packets)
 {
-    // Nối list của con trỏ vào m_packetBuffer
-    m_packetBuffer.append(std::move(*packets));
+    // 1. Lưu vào kho tổng
+    m_allPackets.append(*packets);
 
-    // 'packets' bây giờ là một list rỗng, chúng ta xóa nó
+    // 2. Thêm vào hàng đợi
+    m_packetBuffer.append(std::move(*packets));
     delete packets;
 }
 

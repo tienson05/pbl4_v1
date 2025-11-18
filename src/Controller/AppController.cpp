@@ -22,7 +22,7 @@ AppController::AppController(MainWindow *mainWindow, QObject *parent)
 {
     // --- Khởi tạo Core ---
     m_captureEngine = new CaptureEngine(this);
-    m_filterEngine = new DisplayFilterEngine(this);
+m_filterEngine = new DisplayFilterEngine();
     m_statsManager = new StatisticsManager(this);
     m_convManager = new ConversationManager(this);
     loadInterfaces();
@@ -64,7 +64,7 @@ void AppController::onInterfaceSelected(const QString &interfaceName, const QStr
 
     m_statsManager->clear();
     m_convManager->clear();
-    m_filterEngine->setFilter("");
+    m_currentFilterText = "";
     emit clearPacketTable();
 
     m_captureEngine->setInterface(interfaceName);
@@ -90,7 +90,7 @@ void AppController::onOpenFileRequested()
     }
     m_statsManager->clear();
     m_convManager->clear();
-    m_filterEngine->setFilter("");
+    m_currentFilterText = "";
     emit clearPacketTable();
     m_captureEngine->startCaptureFromFile(filePath);
     m_mainWindow->showCapturePage();
@@ -152,7 +152,7 @@ void AppController::onRestartCaptureClicked()
 
     m_statsManager->clear();
     m_convManager->clear();
-    m_filterEngine->setFilter("");
+    m_currentFilterText = "";
     emit clearPacketTable();
     m_captureEngine->stopCapture();
     m_captureEngine->startCapture();
@@ -177,12 +177,10 @@ void AppController::onPauseCaptureClicked()
 
 void AppController::onApplyFilterClicked(const QString &filterText)
 {
-    qDebug() << "Apply BPF display filter:" << filterText;
-    if (!m_filterEngine->setFilter(filterText))
-    {
-        emit displayFilterError(m_filterEngine->getLastError());
-        m_filterEngine->setFilter("");
-    }
+    qDebug() << "Apply Display Filter:" << filterText;
+
+    // SỬA LỖI 2: Lưu text vào biến thành viên
+    m_currentFilterText = filterText;
 
     // (SỬA) Gọi hàm refresh đa luồng mới
     refreshFullDisplay();
@@ -214,7 +212,7 @@ void AppController::onPacketsCaptured(QList<PacketData>* packetBatch)
     // 3. (MỚI) Lọc lô này để hiển thị live
     QList<PacketData>* filteredBatch = new QList<PacketData>();
     for (const PacketData &packet : *packetBatch) {
-        if (m_filterEngine->packetMatches(packet))
+        if (m_filterEngine->match(packet, m_currentFilterText))
         {
             filteredBatch->append(packet);
         }
@@ -251,7 +249,7 @@ void AppController::refreshFullDisplay()
 
             // 4. Lặp qua danh sách chính (trên luồng nền)
             for (const PacketData &packet : m_allPackets) {
-                if (m_filterEngine->packetMatches(packet)) {
+                if (m_filterEngine->match(packet, m_currentFilterText)) {
                     filteredList->append(packet);
                 }
             }
