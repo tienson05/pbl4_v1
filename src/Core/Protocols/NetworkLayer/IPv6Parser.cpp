@@ -2,8 +2,6 @@
 #include <netinet/ip6.h>    // Cần cho struct ip6_hdr và các extension
 #include <arpa/inet.h>      // Cần cho inet_ntop, ntohs, ntohl
 #include <cstring>          // Cần cho memcpy
-#include <sstream>
-#include <iomanip>
 #include <string>           // Cần cho std::to_string
 
 // --- Các hàm trợ giúp nội bộ ---
@@ -24,10 +22,7 @@ static std::string to_string_8(uint8_t val) {
 
 // --- Triển khai (Implementation) ---
 
-/**
- * @brief (ĐÃ THAY ĐỔI) Hàm parse này sẽ "ăn" con trỏ data và len
- * đi qua các extension header.
- */
+
 bool IPv6Parser::parse(IPv6Header& ipv6, const uint8_t*& data, size_t& len) {
     // Header IPv6 cố định là 40 bytes
     if (len < 40) {
@@ -48,7 +43,6 @@ bool IPv6Parser::parse(IPv6Header& ipv6, const uint8_t*& data, size_t& len) {
         return false; // Không phải là IPv6
     }
 
-    // --- LOGIC MỚI: Xử lý Extension Headers ---
     data += 40; // Tăng con trỏ qua header chính
     len -= 40;
 
@@ -100,7 +94,6 @@ bool IPv6Parser::parse(IPv6Header& ipv6, const uint8_t*& data, size_t& len) {
         }
     }
 
-    // --- KẾT THÚC LOGIC MỚI ---
 
     // Cập nhật 'next_header' thành protocol Tầng 4 thực sự
     ipv6.next_header = current_next_header;

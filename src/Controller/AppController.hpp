@@ -9,6 +9,7 @@
 #include "StatisticsManager.hpp"
 #include "ControllerLib/ConversationManager.hpp"
 #include "../Widgets/StatisticsDialog.hpp"
+#include "../Widgets/IOGraphDialog.hpp" // <-- THÊM INCLUDE
 
 
 class AppController : public QObject
@@ -29,6 +30,7 @@ public slots:
     // (QUAN TRỌNG) Slot này nhận chuỗi lọc
     void onApplyFilterClicked(const QString &filterText);
     void onStatisticsMenuClicked();
+    void onIOGraphMenuClicked(); // <-- THÊM SLOT MỚI
 
     // Core Signals
     void onPacketsCaptured(QList<PacketData>* packetBatch);
@@ -51,6 +53,8 @@ private:
     StatisticsManager *m_statsManager;
     StatisticsDialog *m_statisticsDialog;
     ConversationManager *m_convManager;
+    IOGraphDialog *m_ioGraphDialog;
+
 
     // Dữ liệu
     QList<PacketData> m_allPackets;

@@ -44,6 +44,8 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::openFileRequested);
     connect(header, &HeaderWidget::analyzeStatisticsRequested,
             this, &MainWindow::analyzeStatisticsRequested);
+    connect(header, &HeaderWidget::analyzeIOGraphRequested,
+             this, &MainWindow::analyzeIOGraphRequested);
 
     // --- Forward signal từ WelcomePage sang Controller ---
     connect(welcomePage, &WelcomePage::interfaceSelected,
@@ -78,9 +80,7 @@ void MainWindow::showCapturePage() {
 
 // --- SLOTS CÔNG KHAI (do AppController gọi) ---
 
-/**
- * @brief (ĐÃ SỬA) Chuyển tiếp "lô" (batch) xuống PacketTable
- */
+
 void MainWindow::addPacketsToTable(QList<PacketData>* packets)
 {
     if (capturePage) {
@@ -92,9 +92,7 @@ void MainWindow::addPacketsToTable(QList<PacketData>* packets)
     }
 }
 
-/**
- * @brief (Giữ nguyên) Chuyển tiếp lệnh 'clearData' xuống PacketTable
- */
+
 void MainWindow::clearPacketTable()
 {
     if (capturePage) {
@@ -102,9 +100,7 @@ void MainWindow::clearPacketTable()
     }
 }
 
-/**
- * @brief (Giữ nguyên) Hiển thị lỗi filter
- */
+
 void MainWindow::showFilterError(const QString &errorText)
 {
     QMessageBox::warning(this, "Display Filter Error",

@@ -16,6 +16,7 @@ signals:
     void captureStartRequested();
     void analyzeFlowRequested();
     void analyzeStatisticsRequested();
+    void analyzeIOGraphRequested();
 
 private:
     void setupTitleBar(QWidget *parent, QVBoxLayout *mainLayout);

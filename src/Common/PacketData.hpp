@@ -196,10 +196,7 @@ struct PacketData {
 
     // ======= Methods =======
 
-    /**
-     * @brief (ĐÃ SỬA) Reset toàn bộ dữ liệu của struct
-     * để chuẩn bị phân tích gói tin mới.
-     */
+
     void clear(){
         raw_packet.clear();
         tree_view.clear();
@@ -227,7 +224,6 @@ struct PacketData {
     }
 };
 
-// (Cần thiết để QVariant lưu trữ PacketData)
 #include <QVariant>
 Q_DECLARE_METATYPE(PacketData)
 

@@ -5,6 +5,8 @@
 #include <QMap>
 #include <QString>
 #include <QList> // <-- THÊM MỚI
+#include <QVector> // <-- Thêm
+#include <QPointF> // <-- Thêm
 #include "../../Common/PacketData.hpp"
 
 class StatisticsManager : public QObject
@@ -18,6 +20,10 @@ public:
     QMap<QString, qint64> getSourceIpCounts() const;
     QMap<QString, qint64> getDestIpCounts() const;
     qint64 getTotalPackets() const;
+    // --- THÊM MỚI: Hàm tính toán dữ liệu I/O Graph ---
+    // intervalMs: Khoảng thời gian (ví dụ 1000ms = 1 giây)
+    // modeBytes: true = Bytes/sec, false = Packets/sec
+    QVector<QPointF> calculateIOGraphData(const QList<PacketData>& packets, int intervalMs, bool modeBytes);
 
 public slots:
     // (Hàm cũ xử lý 1 gói)

@@ -61,18 +61,12 @@ public:
         }
     }
 
-    // -----------------------------------------------------------------
-    // Helper: chuyển số thành chuỗi hex có độ rộng cố định
-    // -----------------------------------------------------------------
     static std::string to_hex(uint16_t val, int width = 4) {
         std::ostringstream oss;
         oss << std::hex << std::setw(width) << std::setfill('0') << val;
         return oss.str();
     }
 
-    // -----------------------------------------------------------------
-    // appendTreeView – đã được sửa lỗi nối chuỗi
-    // -----------------------------------------------------------------
     static void appendTreeView(std::string& tree, int depth, const VLANHeader& vlan) {
         const std::string indent(depth * 2, ' ');
 

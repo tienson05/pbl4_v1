@@ -7,7 +7,6 @@
 
 // --- Các hàm trợ giúp nội bộ ---
 
-// Hàm trợ giúp để thêm dòng vào cây
 static void appendTree(std::string& tree, int depth, const std::string& line) {
     tree += std::string(depth * 2, ' ') + line + "\n";
 }
@@ -65,7 +64,7 @@ bool ARPParser::parse(ARPHeader& arp, const uint8_t* data, size_t len) {
     memcpy(&sender_ip_net, arp_hdr->arp_spa, 4);
     memcpy(&target_ip_net, arp_hdr->arp_tpa, 4);
 
-    // --- ĐÃ SỬA LỖI (Bỏ ntohl()) ---
+
     // (Lưu IP ở dạng Network Byte Order để khớp với IPv4Parser)
     arp.sender_ip = sender_ip_net;
     arp.target_ip = target_ip_net;

@@ -6,6 +6,7 @@
 #include <QPair>
 #include "../Common/PacketData.hpp"
 #include <QMessageBox>
+#include "Header/AnalyzeMenu.hpp"
 
 // Khai báo trước
 class HeaderWidget;
@@ -64,10 +65,11 @@ signals:
     void onPauseCaptureClicked();
     void onApplyFilterClicked(const QString &filterText); // <-- Filter hiển thị
     void analyzeStatisticsRequested(); // <-- THÊM CÁI NÀY
-
+    void analyzeIOGraphRequested(); // <-- THÊM MỚI
 private:
     HeaderWidget *header;
     QStackedWidget *stack;
     WelcomePage *welcomePage;
     CapturePage *capturePage;
+    AnalyzeMenu *m_analyzeMenu;
 };

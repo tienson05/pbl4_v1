@@ -23,10 +23,7 @@ public:
     bool isPaused() const { return m_isPaused; }
 
 signals:
-    /**
-     * @brief (ĐÃ THAY ĐỔI) Gửi đi MỘT LÔ (batch) gói tin.
-     * Dùng con trỏ để tránh copy (zero-copy).
-     */
+
     void packetsCaptured(QList<PacketData>* packetBatch);
     void errorOccurred(const QString &error);
 
@@ -47,7 +44,6 @@ private:
     volatile bool m_isRunning = false;
     int m_packetCounter = 0;
 
-    // --- (THÊM MỚI) ---
     QThread* m_captureThread = nullptr; // Con trỏ theo dõi luồng
 
     // --- helper ---

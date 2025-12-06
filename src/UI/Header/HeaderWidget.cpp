@@ -52,13 +52,20 @@ void HeaderWidget::setupMenuBar(QWidget *parent, QVBoxLayout *mainLayout)
     auto *captureMenu = new CaptureMenu(menuBar);
     auto *analyzeMenu = new AnalyzeMenu(menuBar);
 
+    // --- File Menu Connections ---
     connect(fileMenu, &FileMenu::openFileRequested, this, &HeaderWidget::openFileRequested);
     connect(fileMenu, &FileMenu::saveFileRequested, this, &HeaderWidget::saveFileRequested);
     connect(fileMenu, &FileMenu::closeRequested, this, &HeaderWidget::closeRequested);
 
+    // --- Capture Menu Connections ---
     connect(captureMenu, &CaptureMenu::captureStartRequested, this, &HeaderWidget::captureStartRequested);
+
+    // --- Analyze Menu Connections ---
     connect(analyzeMenu, &AnalyzeMenu::analyzeFlowRequested, this, &HeaderWidget::analyzeFlowRequested);
     connect(analyzeMenu, &AnalyzeMenu::analyzeStatisticsRequested, this, &HeaderWidget::analyzeStatisticsRequested);
+
+    // [QUAN TRỌNG] THÊM DÒNG NÀY ĐỂ KẾT NỐI I/O GRAPH
+    connect(analyzeMenu, &AnalyzeMenu::analyzeIOGraphRequested, this, &HeaderWidget::analyzeIOGraphRequested);
 
     menuLayout->addWidget(fileMenu);
     menuLayout->addWidget(captureMenu);

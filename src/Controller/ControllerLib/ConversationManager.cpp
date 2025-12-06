@@ -10,9 +10,7 @@ void ConversationManager::clear()
     m_streams.clear();
 }
 
-/**
- * @brief (MỚI) Tạo ID cho một luồng (stream)
- */
+
 StreamID ConversationManager::getStreamID(const PacketData& packet)
 {
     StreamID id{};
@@ -45,14 +43,10 @@ StreamID ConversationManager::getStreamID(const PacketData& packet)
 
 void ConversationManager::processPackets(const QList<PacketData>& packetBatch)
 {
-    // (Hàm này không được dùng trong kiến trúc mới,
-    //  nhưng chúng ta giữ lại để tương thích)
-    // (AppController sẽ gọi processPacket() trong vòng lặp)
+
 }
 
-/**
- * @brief (MỚI) Xử lý 1 gói, SỬA ĐỔI nó dựa trên trạng thái
- */
+
 void ConversationManager::processPacket(PacketData& packet)
 {
     // === LOGIC QUIC (THEO DÕI TRẠNG THÁI) ===

@@ -19,7 +19,6 @@ static std::string to_hex(T val) {
     return ss.str();
 }
 
-// --- (THÊM MỚI) ---
 // Hàm helper để chuyển Loại DNS (Type) sang chuỗi
 static std::string getDnsTypeName(uint16_t type) {
     switch (type) {
@@ -37,7 +36,6 @@ static std::string getDnsTypeName(uint16_t type) {
     default:  return "Type(" + std::to_string(type) + ")";
     }
 }
-// --- (KẾT THÚC THÊM MỚI) ---
 
 /**
  * @brief Hàm đệ quy quan trọng nhất: đọc tên miền DNS (xử lý cả con trỏ nén).
