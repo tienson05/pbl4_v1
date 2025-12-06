@@ -6,7 +6,6 @@
 #include <iomanip> // <-- THÊM MỚI
 #include <cstring> // Cần cho memcpy
 
-// --- (THÊM MỚI) Hàm helper để chuyển đổi byte sang chuỗi Hex ---
 static std::string hexStr(const uint8_t* data, size_t len) {
     if (len == 0) return "";
     std::stringstream ss;
@@ -45,9 +44,7 @@ static bool parseSSDP(const uint8_t* data, size_t len, std::string& infoOutput) 
     }
     return true;
 }
-/**
- * @brief (ĐÃ SỬA) Phân tích Tầng 7, phân biệt TCP/UDP và (CHỈ) đánh dấu QUIC
- */
+
 bool ApplicationParser::parse(ApplicationLayer& app, const uint8_t* data, size_t len,
                               uint16_t src_port, uint16_t dest_port, bool is_tcp)
 {

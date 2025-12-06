@@ -1,5 +1,4 @@
 #include "StatisticsManager.hpp"
-#include <sstream>
 
 StatisticsManager::StatisticsManager(QObject *parent)
     : QObject(parent),
@@ -14,11 +13,43 @@ void StatisticsManager::clear()
     m_sourceIpCounts.clear();
     m_destIpCounts.clear();
 }
+QVector<QPointF> StatisticsManager::calculateIOGraphData(const QList<PacketData>& packets, int intervalMs, bool modeBytes)
+{
+    QVector<QPointF> points;
+    if (packets.isEmpty()) return points;
 
-/**
- * @brief (THÊM MỚI) Hàm xử lý LÔ (batch)
- * Nó chỉ lặp và gọi hàm xử lý 1 gói (processPacket)
- */
+    // 1. Lấy thời gian bắt đầu (gói tin đầu tiên làm mốc 0)
+    double startTime = packets.first().timestamp.tv_sec +
+                       packets.first().timestamp.tv_nsec / 1.0e9;
+
+    // Map: Key = chỉ số khoảng thời gian (0, 1, 2...), Value = Tổng lưu lượng
+    QMap<int, double> timeBuckets;
+    int maxIndex = 0;
+
+    // 2. Gom nhóm dữ liệu
+    for (const auto& pkt : packets) {
+        double pktTime = pkt.timestamp.tv_sec + pkt.timestamp.tv_nsec / 1.0e9;
+        double diff = pktTime - startTime;
+
+        if (diff < 0) diff = 0; // An toàn
+
+        int index = static_cast<int>(diff * 1000.0 / intervalMs);
+        if (index > maxIndex) maxIndex = index;
+
+        double valueToAdd = modeBytes ? pkt.wire_length : 1.0;
+        timeBuckets[index] += valueToAdd;
+    }
+
+    // 3. Tạo điểm dữ liệu (điền cả những khoảng trống bằng 0)
+    for (int i = 0; i <= maxIndex; ++i) {
+        double timeX = i * (intervalMs / 1000.0); // Quy đổi ra giây cho trục X
+        double valY = timeBuckets.value(i, 0.0);
+        points.append(QPointF(timeX, valY));
+    }
+
+    return points;
+}
+
 void StatisticsManager::processPackets(const QList<PacketData> &packetBatch)
 {
     for (const PacketData &packet : packetBatch) {
@@ -28,9 +59,7 @@ void StatisticsManager::processPackets(const QList<PacketData> &packetBatch)
 }
 
 
-/**
- * @brief (HÀM CŨ) Xử lý 1 gói
- */
+
 void StatisticsManager::processPacket(const PacketData &packet)
 {
     // --- 1. ĐẾM TỔNG SỐ GÓI TIN ---

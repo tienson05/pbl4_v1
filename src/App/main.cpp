@@ -9,14 +9,14 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     MacResolver::instance().loadDatabase("/home/toan/Qt/Project/pbl4_v1/src/App/manuf");
 
-    // 1️⃣ Tạo MainWindow
+    // 1️.Tạo MainWindow
     MainWindow mainWindow;
 
-    // 2️⃣ Tạo AppController, truyền MainWindow
+    // 2️. Tạo AppController, truyền MainWindow
     AppController controller(&mainWindow);
-    // 3️⃣ Hiển thị MainWindow
+    // 3️. Hiển thị MainWindow
     mainWindow.show();
 
-    // 4️⃣ Chạy ứng dụng
+    // 4️. Chạy ứng dụng
     return app.exec();
 }

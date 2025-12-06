@@ -182,7 +182,6 @@ bool DisplayFilterEngine::checkPort(const PacketData& packet, int targetPort, co
     // port > 1024 nghĩa là src > 1024 HOẶC dst > 1024
     return srcMatch || dstMatch;
 }
-// --- (MỚI) LỌC THEO ĐỘ DÀI ---
 bool DisplayFilterEngine::checkLength(const PacketData& packet, int targetLen, const QString& op) {
     return compareInt(packet.wire_length, targetLen, op);
 }

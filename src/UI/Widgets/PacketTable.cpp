@@ -18,14 +18,12 @@
 #include <QRegularExpression>
 #include <QTimer> // <-- THÊM MỚI
 #include <QTextBlock>
-// --- (MỚI) HÀM HELPER ĐỂ CHUYỂN SANG HEX (GIỐNG WIRESHARK) ---
 template <typename T>
 static QString toHex(T val, int width = 4) {
     std::stringstream ss;
     ss << "0x" << std::hex << std::setw(width) << std::setfill('0') << static_cast<int>(val);
     return QString::fromStdString(ss.str());
 }
-// --- (MỚI) HÀM HELPER XỬ LÝ TÊN VENDOR ---
 // Input: "00:11:22:33:44:55", Output: "Apple_33:44:55" (nếu tìm thấy) hoặc giữ nguyên
 static QString getResolvedMacLabel(const QString& rawMac) {
     std::string vendor = MacResolver::instance().getVendor(rawMac.toStdString());
@@ -34,7 +32,6 @@ static QString getResolvedMacLabel(const QString& rawMac) {
     }
     return QString::fromStdString(vendor) + "_" + rawMac.right(8);
 }
-// === (MỚI) CÁC THAM SỐ TỐI ƯU HÓA ===
 const int CHUNK_SIZE = 500; // Xử lý 500 gói mỗi lần
 const int TIMER_INTERVAL_MS = 30; // ~33 FPS
 
@@ -46,13 +43,11 @@ PacketTable::PacketTable(QWidget *parent)
     connect(packetList, &QTableWidget::itemClicked, this, &PacketTable::onPacketRowSelected);
     connect(packetDetails, &QTreeWidget::itemClicked, this, &PacketTable::onDetailRowSelected);
 
-    // --- (MỚI) THIẾT LẬP BỘ ĐỆM CHỐNG LAG ---
     m_updateTimer = new QTimer(this);
     m_updateTimer->setInterval(TIMER_INTERVAL_MS);
     connect(m_updateTimer, &QTimer::timeout, this, &PacketTable::processPacketChunk);
     m_updateTimer->start();
 
-    // (MỚI) Theo dõi thanh cuộn để tự động cuộn
     connect(packetList->verticalScrollBar(), &QScrollBar::valueChanged, this, [this](int value){
         QScrollBar* vbar = packetList->verticalScrollBar();
         m_isUserAtBottom = (vbar == nullptr) || (value >= vbar->maximum() - 5);
@@ -64,7 +59,6 @@ void PacketTable::setupUI()
     QVBoxLayout *layout = new QVBoxLayout(this);
     packetList = new QTableWidget(this);
 
-    // (Code này đã đúng từ file của bạn)
     packetList->setColumnCount(8);
     QStringList headers = {"No.", "Time", "Source", "Destination", "Protocol", "Length", "Info"};
     packetList->setHorizontalHeaderLabels(headers);
@@ -110,16 +104,12 @@ void PacketTable::clearData()
 
 }
 
-/**
- * @brief (ĐÃ SỬA) Slot nhận MỘT gói tin
- * Chỉ thêm vào hàng đợi. QTimer sẽ xử lý.
- */
+
 void PacketTable::applyFilter(const QString& filterText)
 {
     m_currentFilter = filterText;
     refreshTable(); // Vẽ lại bảng
 }
-// --- (MỚI) HÀM VẼ LẠI BẢNG KHI LỌC ---
 void PacketTable::refreshTable()
 {
     // Tối ưu: Tắt vẽ khi đang update
@@ -153,10 +143,6 @@ void PacketTable::onPacketReceived(const PacketData &packet)
     m_packetBuffer.append(packet);
 }
 
-/**
- * @brief (ĐÃ SỬA) Slot nhận MỘT LÔ (batch) gói tin
- * Dùng std::move để "cướp" dữ liệu (siêu nhanh O(1)).
- */
 void PacketTable::onPacketsReceived(QList<PacketData>* packets)
 {
     // 1. Lưu vào kho tổng
@@ -167,9 +153,7 @@ void PacketTable::onPacketsReceived(QList<PacketData>* packets)
     delete packets;
 }
 
-/**
- * @brief (MỚI) Được gọi bởi QTimer, xử lý một phần nhỏ của buffer
- */
+
 void PacketTable::processPacketChunk()
 {
     if (m_packetBuffer.isEmpty()) {
@@ -202,10 +186,7 @@ void PacketTable::processPacketChunk()
     }
 }
 
-/**
- * @brief (MỚI) Hàm helper để chèn 1 hàng vào bảng.
- * (Đây chính là code 'addPacket' cũ của bạn)
- */
+
 void PacketTable::insertPacketRow(const PacketData &packet)
 {
     int row = packetList->rowCount();
@@ -741,7 +722,6 @@ QString PacketTable::macToString(const std::array<uint8_t, 6>& mac)
 
 QString PacketTable::ipToString(uint32_t ip_host_order)
 {
-    // (Đã đúng)
     return QString("%1.%2.%3.%4")
         .arg((ip_host_order) & 0xFF)
         .arg((ip_host_order >> 8)  & 0xFF)

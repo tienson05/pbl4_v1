@@ -5,7 +5,6 @@
 #include <sstream>
 #include <iomanip>
 
-// --- (THÊM MỚI) Định nghĩa các hằng số TCP Option Kind ---
 #define TCPOPT_EOL 0
 #define TCPOPT_NOP 1
 #define TCPOPT_TIMESTAMP 8
@@ -42,7 +41,6 @@ static std::string getPortName(uint16_t port) {
     }
 }
 
-// --- (THÊM MỚI) Hàm Phân tích TCP Options ---
 void TCPParser::parseTCPOptions(TCPHeader& tcp, const uint8_t* options_data, size_t options_len)
 {
     const uint8_t* ptr = options_data;
