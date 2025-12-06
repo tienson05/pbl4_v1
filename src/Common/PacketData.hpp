@@ -156,7 +156,7 @@ struct PacketData {
     timespec timestamp{};
     uint32_t cap_length = 0;
     uint32_t wire_length = 0;
-
+    int64_t stream_index = -1;
     // Raw Data
     std::vector<uint8_t> raw_packet;
 
@@ -206,6 +206,8 @@ struct PacketData {
         has_vlan = is_ipv4 = is_ipv6 = is_arp = false;
         is_tcp = is_udp = is_icmp = false;
         is_malformed = is_retransmitted = is_duplicate = false;
+
+        stream_index = -1;
 
         eth = EthernetHeader{};
         vlan = VLANHeader{};

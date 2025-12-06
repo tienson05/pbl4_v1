@@ -22,7 +22,7 @@ public:
     void showWelcomePage();
     void showCapturePage();
     void setDevices(const QVector<QPair<QString, QString>> &devices);
-
+void updateInterfaceLabel(const QString &name, const QString &filter);
 public slots:
     // --- CÁC SLOT CÔNG KHAI (để AppController kết nối) ---
 
@@ -43,6 +43,7 @@ public slots:
      * từ AppController và hiển thị một QMessageBox.
      */
     void showFilterError(const QString &errorText);
+    void applyStreamFilter(const QString &filterText);
 
 private slots:
     // --- Các slot xử lý cục bộ (cho các nút trên Header) ---
