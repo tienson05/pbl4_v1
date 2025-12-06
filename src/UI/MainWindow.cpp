@@ -3,7 +3,7 @@
 #include "Pages/WelcomePage.hpp"
 #include "Pages/CapturePage.hpp"
 #include "Widgets/PacketTable.hpp"
-
+#include <QTableView>
 #include <QVBoxLayout>
 #include <QDebug>
 
@@ -64,6 +64,8 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::onApplyFilterClicked);
     connect(capturePage, &CapturePage::onStatisticsClicked,
             this, &MainWindow::analyzeStatisticsRequested);
+    connect(capturePage->packetTable, &PacketTable::filterRequested,
+            this, &MainWindow::applyStreamFilter);
 
     // Mặc định hiển thị WelcomePage
     showWelcomePage();
@@ -129,4 +131,23 @@ void MainWindow::onMaximizeRequested() {
 
 void MainWindow::onCloseRequested() {
     close();
+}
+void MainWindow::updateInterfaceLabel(const QString &name, const QString &filter)
+{
+    if (capturePage) {
+        // Gọi hàm vừa sửa ở Bước 2
+        capturePage->setInterfaceName(name, filter);
+    }
+}
+// Thêm hàm này vào cuối file hoặc chỗ các Slot
+void MainWindow::applyStreamFilter(const QString &filterText)
+{
+    // 1. Cập nhật giao diện (Điền text vào ô tìm kiếm bên trong CapturePage)
+    if (capturePage) {
+        capturePage->setFilterText(filterText);
+    }
+
+    // 2. Kích hoạt lọc (Bắn tín hiệu y hệt như khi người dùng bấm nút Apply)
+    // Tín hiệu này đã được connect với AppController::onApplyFilterClicked trong constructor
+    emit onApplyFilterClicked(filterText);
 }

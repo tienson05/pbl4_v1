@@ -27,6 +27,8 @@ CapturePage::CapturePage(QWidget *parent)
     });
     connect(statisticsBtn, &QPushButton::clicked, this, &CapturePage::onStatisticsClicked);
 
+    // (MỚI) Cho phép nhấn Enter ở thanh Filter để Apply luôn
+    connect(filterLineEdit, &QLineEdit::returnPressed, applyFilterButton, &QPushButton::click);
 }
 
 void CapturePage::setupUI()
@@ -47,7 +49,7 @@ void CapturePage::setupUI()
 
     // --- Thanh filter ---
     QHBoxLayout *filterLayout = new QHBoxLayout;
-    filterLineEdit->setPlaceholderText("Enter display filter");
+    filterLineEdit->setPlaceholderText("Enter display filter (e.g., tcp, udp, stream == 1)");
     filterLayout->addWidget(filterLineEdit);
     filterLayout->addWidget(applyFilterButton);
 
@@ -73,4 +75,28 @@ void CapturePage::setupUI()
             padding: 4px;
         }
     )");
+}
+
+void CapturePage::setInterfaceName(const QString &name, const QString &filter)
+{
+    // Tạo chuỗi cơ bản
+    QString displayText = "Interface: " + name;
+
+    // Nếu có filter thì thêm vào
+    if (!filter.isEmpty()) {
+        displayText += " (" + filter + ")";
+    }
+
+    // Cập nhật lên màn hình
+    if (sourceNameLabel) {
+        sourceNameLabel->setText(displayText);
+    }
+}
+
+// --- (MỚI) Triển khai hàm setFilterText ---
+void CapturePage::setFilterText(const QString &text)
+{
+    if (filterLineEdit) {
+        filterLineEdit->setText(text);
+    }
 }

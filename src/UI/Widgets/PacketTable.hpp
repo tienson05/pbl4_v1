@@ -21,7 +21,9 @@ class PacketTable : public QWidget
 
 public:
     explicit PacketTable(QWidget *parent = nullptr);
-
+signals:
+    // (MỚI) Bắn tín hiệu này ra ngoài khi người dùng chọn "Follow Stream"
+    void filterRequested(const QString &filterText);
 public slots:
     // Nhận gói tin từ Capture Engine
     void onPacketReceived(const PacketData &packet);
@@ -42,6 +44,7 @@ private slots:
     void onDetailRowSelected(QTreeWidgetItem *item, int column);
 
 private:
+    void showContextMenu(const QPoint &pos);
     // (MỚI) Hàm vẽ lại bảng khi thay đổi Filter (ẩn/hiện các dòng)
     void refreshTable();
 

@@ -76,13 +76,13 @@ void AppController::onInterfaceSelected(const QString &interfaceName, const QStr
     m_captureEngine->startCapture();
 
     m_mainWindow->showCapturePage();
+    m_mainWindow->updateInterfaceLabel(interfaceName, filterText);
 }
 
 void AppController::onOpenFileRequested()
 {
     qDebug() << "Open file requested";
     m_captureEngine->stopCapture();
-    // ... (Code QFileDialog của bạn giữ nguyên) ...
     QString filePath = QFileDialog::getOpenFileName(m_mainWindow, tr("Open Pcap File"));
     if (filePath.isEmpty()) {
         return;
