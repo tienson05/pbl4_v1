@@ -27,7 +27,7 @@ CapturePage::CapturePage(QWidget *parent)
     });
     connect(statisticsBtn, &QPushButton::clicked, this, &CapturePage::onStatisticsClicked);
 
-    // (MỚI) Cho phép nhấn Enter ở thanh Filter để Apply luôn
+    // Cho phép nhấn Enter ở thanh Filter để Apply luôn
     connect(filterLineEdit, &QLineEdit::returnPressed, applyFilterButton, &QPushButton::click);
 }
 
@@ -93,7 +93,6 @@ void CapturePage::setInterfaceName(const QString &name, const QString &filter)
     }
 }
 
-// --- (MỚI) Triển khai hàm setFilterText ---
 void CapturePage::setFilterText(const QString &text)
 {
     if (filterLineEdit) {

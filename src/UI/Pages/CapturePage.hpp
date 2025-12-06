@@ -16,7 +16,7 @@ public:
 
     void setInterfaceName(const QString &name, const QString &filter = QString());
 
-    // --- (MỚI) Hàm để MainWindow điền text vào thanh filter ---
+    // ---  Hàm để MainWindow điền text vào thanh filter ---
     void setFilterText(const QString &text);
 
 signals:

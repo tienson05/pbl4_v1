@@ -78,7 +78,7 @@ struct TCPHeader {
     std::array<uint8_t, 40> options{};
     uint8_t  options_len = 0;
 
-    // --- (SỬA ĐỔI) THÊM CÁC TRƯỜNG TIMESTAMP ---
+    // THÊM CÁC TRƯỜNG TIMESTAMP ---
     bool     has_timestamp = false;
     uint32_t ts_val = 0;
     uint32_t ts_ecr = 0;

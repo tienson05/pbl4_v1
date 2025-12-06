@@ -4,12 +4,11 @@
 #include <QWidget>
 #include <QList>
 #include <QTimer>
-#include <QRegularExpression>
 #include <QTreeWidget>
 #include "../../Common/PacketData.hpp"
-#include "../../Controller/ControllerLib/DisplayFilterEngine.hpp" // <-- (MỚI) Include Engine lọc
+#include "../../Controller/ControllerLib/DisplayFilterEngine.hpp"
 
-// Khai báo trước (Forward declarations)
+// Forward declarations
 class QTableWidget;
 class QTextEdit;
 class QTableWidgetItem;
@@ -21,75 +20,52 @@ class PacketTable : public QWidget
 
 public:
     explicit PacketTable(QWidget *parent = nullptr);
+
 signals:
-    // (MỚI) Bắn tín hiệu này ra ngoài khi người dùng chọn "Follow Stream"
+    // Bắn tín hiệu khi chọn "Follow Stream"
     void filterRequested(const QString &filterText);
+
 public slots:
-    // Nhận gói tin từ Capture Engine
+    // Nhận dữ liệu
     void onPacketReceived(const PacketData &packet);
     void onPacketsReceived(QList<PacketData>* packets);
 
-    // Xóa dữ liệu
+    // Xử lý dữ liệu
     void clearData();
-
-    // (MỚI) Slot nhận tín hiệu lọc từ thanh Header
     void applyFilter(const QString& filterText);
 
 private slots:
-    // Xử lý bộ đệm (Anti-lag)
+    // Slot nội bộ
     void processPacketChunk();
-
-    // Sự kiện Click UI
     void onPacketRowSelected(QTableWidgetItem *item);
     void onDetailRowSelected(QTreeWidgetItem *item, int column);
 
 private:
+    // UI Setup & Logic hiển thị bảng
+    void setupUI();
     void showContextMenu(const QPoint &pos);
-    // (MỚI) Hàm vẽ lại bảng khi thay đổi Filter (ẩn/hiện các dòng)
     void refreshTable();
-
-    // Hàm vẽ 1 dòng lên bảng (chỉ dùng nội bộ khi thỏa mãn filter)
     void insertPacketRow(const PacketData& packet);
 
-    void setupUI();
-
-    // Hiển thị chi tiết và Hex dump
-    void showPacketDetails(const PacketData &packet);
-    void showHexDump(const PacketData &packet, int highlight_offset = -1, int highlight_len = 0);
-    void addField(QTreeWidgetItem *parent, const QString &name, const QString &value, int offset = -1, int length = 0);
-
-
-public: // (Các hàm static hỗ trợ format chuỗi)
-    static QString getSourceAddress(const PacketData &p);
-    static QString getDestinationAddress(const PacketData &p);
-    static QString getProtocolName(const PacketData &p);
-    static QString getInfo(const PacketData &p);
-
-    // Helper nội bộ của class (static)
-    static QString macToString(const std::array<uint8_t, 6>& mac);
-    static QString ipToString(uint32_t ip);
-    static QString ipv6ToString(const std::array<uint8_t, 16>& ip);
-    static QString getEtherTypeName(uint16_t type);
-    static QString getIpProtoName(uint8_t proto);
 
 private:
-    // --- THÀNH VIÊN UI ---
+    // --- UI COMPONENTS ---
     QTableWidget *packetList;
     QTreeWidget *packetDetails;
     QTextEdit *packetBytes;
 
-    // Lưu gói tin đang được chọn để hiển thị Hex/Details
+    // --- DATA STATE ---
     PacketData m_currentSelectedPacket;
 
-    // --- THÀNH VIÊN XỬ LÝ BUFFER (CHỐNG LAG) ---
-    QList<PacketData> m_packetBuffer; // Hàng đợi chờ xử lý
+    // --- BUFFER & TIMER (Anti-lag) ---
+    QList<PacketData> m_packetBuffer;
     QTimer* m_updateTimer;
     bool m_isUserAtBottom = true;
 
-    // --- (MỚI) THÀNH VIÊN CHO DISPLAY FILTER ---
-    QList<PacketData> m_allPackets;      // Kho chứa TOÀN BỘ gói tin (không bị mất khi lọc)
-    QString m_currentFilter;             // Từ khóa lọc hiện tại (ví dụ: "http")
-    DisplayFilterEngine m_filterEngine;  // Engine xử lý logic lọc
+    // --- DISPLAY FILTER DATA ---
+    QList<PacketData> m_allPackets;      // Kho lưu trữ gốc
+    QString m_currentFilter;             // Filter text hiện tại
+    DisplayFilterEngine m_filterEngine;  // Engine lọc
 };
 
 #endif // PACKETTABLE_HPP

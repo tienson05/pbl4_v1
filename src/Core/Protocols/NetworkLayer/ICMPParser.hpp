@@ -18,7 +18,7 @@ public:
     static void appendTreeView(std::string& tree, int depth, const ICMPHeader& icmp);
 
     /**
-     * @brief (MỚI) Hàm helper để lấy tên Type (Loại)
+     * @brief Hàm helper để lấy tên Type (Loại)
      */
     static std::string getTypeString(uint8_t type);
 };

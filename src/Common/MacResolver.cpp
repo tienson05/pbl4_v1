@@ -18,7 +18,6 @@ bool MacResolver::loadDatabase(const std::string& filePath) {
 
     std::string line;
     while (std::getline(file, line)) {
-        // Bỏ qua dòng comment hoặc dòng trống
         if (line.empty() || line[0] == '#') continue;
 
         std::stringstream ss(line);

@@ -13,9 +13,8 @@
  */
 class ApplicationParser {
 public:
-    /**
-     * @brief (ĐÃ SỬA) Thêm 'is_tcp' để phân biệt TCP và UDP
-     */
+
+    //is_tcp' để phân biệt TCP và UDP
     static bool parse(ApplicationLayer& app, const uint8_t* data, size_t len,
                       uint16_t src_port, uint16_t dest_port, bool is_tcp);
 

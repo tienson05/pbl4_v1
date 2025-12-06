@@ -43,7 +43,7 @@ public:
     // --- HÀM TRỢ GIÚP (HELPERS) ---
 
     /**
-     * @brief (THÊM MỚI) Hàm trợ giúp chung để chuyển uint16_t sang Hex
+     * @brief Hàm trợ giúp chung để chuyển uint16_t sang Hex
      */
     static std::string to_hex(uint16_t val) {
         std::ostringstream oss;
@@ -71,7 +71,6 @@ public:
         case 0x8864: return "PPPoE Session";
         case 0x8863: return "PPPoE Discovery";
         default: {
-            // --- ĐÃ SỬA: Dùng hàm to_hex ---
             return to_hex(type);
         }
         }
@@ -96,17 +95,14 @@ public:
         tree += indent + "  Destination: " + macToString(eth.dest_mac) + "\n";
         tree += indent + "  Source: " + macToString(eth.src_mac) + "\n";
 
-        // --- ĐÃ SỬA: Dùng hàm to_hex ---
         tree += indent + "  Type: " + etherTypeToString(eth.ether_type) + " (" + to_hex(eth.ether_type) + ")\n";
 
         if (has_vlan) {
             tree += indent + "802.1Q Virtual LAN\n";
 
-            // --- ĐÃ SỬA: Dùng hàm to_hex ---
             tree += indent + "  TPID: " + to_hex(vlan.tpid) + "\n";
             tree += indent + "  TCI: " + vlanTciToString(vlan.tci) + "\n";
 
-            // --- ĐÃ SỬA: Dùng hàm to_hex ---
             tree += indent + "  Type: " + etherTypeToString(vlan.ether_type) + " (" + to_hex(vlan.ether_type) + ")\n";
         }
     }

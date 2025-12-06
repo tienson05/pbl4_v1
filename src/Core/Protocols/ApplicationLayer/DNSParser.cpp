@@ -1,9 +1,9 @@
 #include "DNSParser.hpp"
-#include <arpa/inet.h>    // Cần cho ntohs(), ntohl() và inet_ntoa()
-#include <cstring>        // Cần cho memcpy
+#include <arpa/inet.h>
+#include <cstring>
 #include <sstream>
 #include <iomanip>
-#include <string>         // Cần cho std::string() và std::to_string()
+#include <string>
 
 // --- Các hàm trợ giúp nội bộ ---
 
