@@ -104,12 +104,9 @@ void HTTPParser::appendTreeView(std::string& tree, int depth, const ApplicationL
         if (!app.http_host.empty()) {
             appendTree(tree, depth, "Host: " + app.http_host);
         }
-        // (Bạn có thể thêm code để phân tích các header khác ở đây)
     }
     else if (app.is_http_response) {
         std::string status_line = app.http_version + " " + std::to_string(app.http_status_code);
-        // (Code để lấy status message nếu bạn lưu nó)
         appendTree(tree, depth, status_line);
-        // (Bạn có thể thêm code để phân tích các header khác ở đây)
     }
 }

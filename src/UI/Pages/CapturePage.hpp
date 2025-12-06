@@ -14,13 +14,18 @@ public:
     explicit CapturePage(QWidget *parent = nullptr);
     PacketTable *packetTable;
 
+    void setInterfaceName(const QString &name, const QString &filter = QString());
+
+    // ---  Hàm để MainWindow điền text vào thanh filter ---
+    void setFilterText(const QString &text);
+
 signals:
     void onRestartCaptureClicked();
     void onStopCaptureClicked();
     void onPauseCaptureClicked();
     void onApplyFilterClicked(const QString &filterText);
     /**
-     * @brief (THÊM MỚI) Tín hiệu này được phát ra
+     * @brief Tín hiệu này được phát ra
      * khi người dùng nhấn nút "Statistics".
      */
     void onStatisticsClicked();
@@ -43,4 +48,3 @@ private:
     QLineEdit *filterLineEdit;
     QPushButton *applyFilterButton;
 };
-

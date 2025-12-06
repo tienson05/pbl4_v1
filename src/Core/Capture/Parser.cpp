@@ -1,7 +1,6 @@
 #include "../../Common/PacketData.hpp"
 #include "Parser.hpp"
 
-// Include tất cả parser (ĐÃ KÍCH HOẠT HẾT)
 #include "../Protocols/LinkLayer/EthernetParser.hpp"
 #include "../Protocols/LinkLayer/VLANParser.hpp"
 #include "../Protocols/NetworkLayer/IPv4Parser.hpp"
@@ -99,17 +98,16 @@ ApplicationParser::parse(pkt->app, ptr, remaining, pkt->udp.src_port, pkt->udp.d
         }
     }
 
-    // --- KHỐI IPv6 ĐÃ SỬA ---
+    // --- KHỐI IPv6 ---
     else if (next_proto == 0x86DD && remaining >= 40) {
         // --- IPv6 ---
         // 'ptr' và 'remaining' sẽ bị thay đổi bởi hàm parse()
         pkt->is_ipv6 = IPv6Parser::parse(pkt->ipv6, ptr, remaining);
 
         if (pkt->is_ipv6) {
-            // (Không cần tăng 'ptr' hay 'remaining' nữa)
             IPv6Parser::appendTreeView(pkt->tree_view, pkt->tree_depth++, pkt->ipv6);
 
-            // --- THÊM MỚI: Layer 4 (cho IPv6) ---
+            //  Layer 4 (cho IPv6) ---
             uint8_t proto = pkt->ipv6.next_header;
 
             if (proto == 6 && remaining >= 20) { // TCP
@@ -137,7 +135,6 @@ ApplicationParser::parse(pkt->app, ptr, remaining, pkt->udp.src_port, pkt->udp.d
             }
         }
     }
-    // --- KẾT THÚC KHỐI SỬA ---
 
     else if (next_proto == 0x0806 && remaining >= 28) { // <-- ARP
         pkt->is_arp = ARPParser::parse(pkt->arp, ptr, remaining);

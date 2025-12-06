@@ -12,9 +12,10 @@ AnalyzeMenu::AnalyzeMenu(QWidget *parent)
 
     QAction *flowAct = menu->addAction("Packet Flow");
     QAction *statsAct = menu->addAction("Statistics");
-
+QAction *ioGraphAct = menu->addAction("I/O Graph");
     setMenu(menu);
 
     connect(flowAct, &QAction::triggered, this, &AnalyzeMenu::analyzeFlowRequested);
     connect(statsAct, &QAction::triggered, this, &AnalyzeMenu::analyzeStatisticsRequested);
+connect(ioGraphAct, &QAction::triggered, this, &AnalyzeMenu::analyzeIOGraphRequested);
 }

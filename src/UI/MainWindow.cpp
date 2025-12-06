@@ -3,7 +3,7 @@
 #include "Pages/WelcomePage.hpp"
 #include "Pages/CapturePage.hpp"
 #include "Widgets/PacketTable.hpp"
-
+#include <QTableView>
 #include <QVBoxLayout>
 #include <QDebug>
 
@@ -44,6 +44,8 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::openFileRequested);
     connect(header, &HeaderWidget::analyzeStatisticsRequested,
             this, &MainWindow::analyzeStatisticsRequested);
+    connect(header, &HeaderWidget::analyzeIOGraphRequested,
+             this, &MainWindow::analyzeIOGraphRequested);
 
     // --- Forward signal từ WelcomePage sang Controller ---
     connect(welcomePage, &WelcomePage::interfaceSelected,
@@ -62,6 +64,8 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::onApplyFilterClicked);
     connect(capturePage, &CapturePage::onStatisticsClicked,
             this, &MainWindow::analyzeStatisticsRequested);
+    connect(capturePage->packetTable, &PacketTable::filterRequested,
+            this, &MainWindow::applyStreamFilter);
 
     // Mặc định hiển thị WelcomePage
     showWelcomePage();
@@ -78,13 +82,10 @@ void MainWindow::showCapturePage() {
 
 // --- SLOTS CÔNG KHAI (do AppController gọi) ---
 
-/**
- * @brief (ĐÃ SỬA) Chuyển tiếp "lô" (batch) xuống PacketTable
- */
+
 void MainWindow::addPacketsToTable(QList<PacketData>* packets)
 {
     if (capturePage) {
-        // (SỬA LỖI) Gọi đúng tên hàm của PacketTable
         capturePage->packetTable->onPacketsReceived(packets);
     } else {
         // Nếu trang không hiển thị, phải xóa con trỏ để tránh rò rỉ
@@ -92,9 +93,7 @@ void MainWindow::addPacketsToTable(QList<PacketData>* packets)
     }
 }
 
-/**
- * @brief (Giữ nguyên) Chuyển tiếp lệnh 'clearData' xuống PacketTable
- */
+
 void MainWindow::clearPacketTable()
 {
     if (capturePage) {
@@ -102,9 +101,7 @@ void MainWindow::clearPacketTable()
     }
 }
 
-/**
- * @brief (Giữ nguyên) Hiển thị lỗi filter
- */
+
 void MainWindow::showFilterError(const QString &errorText)
 {
     QMessageBox::warning(this, "Display Filter Error",
@@ -133,4 +130,21 @@ void MainWindow::onMaximizeRequested() {
 
 void MainWindow::onCloseRequested() {
     close();
+}
+void MainWindow::updateInterfaceLabel(const QString &name, const QString &filter)
+{
+    if (capturePage) {
+        capturePage->setInterfaceName(name, filter);
+    }
+}
+void MainWindow::applyStreamFilter(const QString &filterText)
+{
+    // 1. Cập nhật giao diện (Điền text vào ô tìm kiếm bên trong CapturePage)
+    if (capturePage) {
+        capturePage->setFilterText(filterText);
+    }
+
+    // 2. Kích hoạt lọc (Bắn tín hiệu y hệt như khi người dùng bấm nút Apply)
+    // Tín hiệu này đã được connect với AppController::onApplyFilterClicked trong constructor
+    emit onApplyFilterClicked(filterText);
 }

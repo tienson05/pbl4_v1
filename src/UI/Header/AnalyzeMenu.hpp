@@ -12,4 +12,5 @@ public:
 signals:
     void analyzeFlowRequested();
     void analyzeStatisticsRequested();
+    void analyzeIOGraphRequested(); // <-- THÊM MỚI
 };

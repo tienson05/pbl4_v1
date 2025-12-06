@@ -1,42 +1,27 @@
 #ifndef DISPLAYFILTERENGINE_HPP
 #define DISPLAYFILTERENGINE_HPP
 
-#include <QObject>
 #include <QString>
-#include <pcap.h> // Cần cho pcap
-#include "../../Common/PacketData.hpp" // Cần cho PacketData
+#include "../../Common/PacketData.hpp"
 
-class DisplayFilterEngine : public QObject
-{
-    Q_OBJECT
+class DisplayFilterEngine {
 public:
-    explicit DisplayFilterEngine(QObject *parent = nullptr);
-    ~DisplayFilterEngine();
+    DisplayFilterEngine();
 
-    /**
-     * @brief Biên dịch một chuỗi filter BPF mới.
-     * @param filterText Chuỗi filter (ví dụ: "tcp and host 192.168.1.1").
-     * @return true nếu cú pháp hợp lệ, false nếu lỗi.
-     */
-    bool setFilter(const QString &filterText);
-
-    /**
-     * @brief Kiểm tra một gói tin có khớp với bộ lọc đã biên dịch không.
-     * @param packet Gói tin (chứa raw_packet).
-     * @return true nếu khớp.
-     */
-    bool packetMatches(const PacketData &packet) const;
-
-    /**
-     * @brief Lấy thông báo lỗi cú pháp gần nhất.
-     */
-    QString getLastError() const;
+    // Hàm chính: Xử lý logic AND (&&) và OR (||)
+    bool match(const PacketData& packet, const QString& filterText);
 
 private:
-    pcap_t* m_pcapHandle;      // Handle pcap "giả" (dummy) chỉ dùng để biên dịch
-    bpf_program m_filterProgram; // Bộ lọc đã biên dịch
-    bool m_filterIsSet;        // Cờ
-    QString m_lastError;
+    // Hàm kiểm tra điều kiện đơn (Code cũ của chúng ta chuyển vào đây)
+    // Ví dụ: check "tcp.port == 80" hoặc "http"
+    bool matchSingleCondition(const PacketData& packet, const QString& condition);
+
+    bool checkProtocol(const PacketData& packet, const QString& protocol);
+    bool checkIp(const PacketData& packet, const QString& targetIp, const QString& type, const QString& op);
+    bool checkPort(const PacketData& packet, int targetPort, const QString& type, const QString& op);
+    bool checkLength(const PacketData& packet, int targetLen, const QString& op);
+    bool compareInt(int val1, int val2, const QString& op);
+    QString ipToString(uint32_t ip);
 };
 
 #endif // DISPLAYFILTERENGINE_HPP

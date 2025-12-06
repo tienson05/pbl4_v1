@@ -78,7 +78,7 @@ struct TCPHeader {
     std::array<uint8_t, 40> options{};
     uint8_t  options_len = 0;
 
-    // --- (SỬA ĐỔI) THÊM CÁC TRƯỜNG TIMESTAMP ---
+    // THÊM CÁC TRƯỜNG TIMESTAMP ---
     bool     has_timestamp = false;
     uint32_t ts_val = 0;
     uint32_t ts_ecr = 0;
@@ -156,7 +156,7 @@ struct PacketData {
     timespec timestamp{};
     uint32_t cap_length = 0;
     uint32_t wire_length = 0;
-
+    int64_t stream_index = -1;
     // Raw Data
     std::vector<uint8_t> raw_packet;
 
@@ -196,10 +196,7 @@ struct PacketData {
 
     // ======= Methods =======
 
-    /**
-     * @brief (ĐÃ SỬA) Reset toàn bộ dữ liệu của struct
-     * để chuẩn bị phân tích gói tin mới.
-     */
+
     void clear(){
         raw_packet.clear();
         tree_view.clear();
@@ -209,6 +206,8 @@ struct PacketData {
         has_vlan = is_ipv4 = is_ipv6 = is_arp = false;
         is_tcp = is_udp = is_icmp = false;
         is_malformed = is_retransmitted = is_duplicate = false;
+
+        stream_index = -1;
 
         eth = EthernetHeader{};
         vlan = VLANHeader{};
@@ -227,7 +226,6 @@ struct PacketData {
     }
 };
 
-// (Cần thiết để QVariant lưu trữ PacketData)
 #include <QVariant>
 Q_DECLARE_METATYPE(PacketData)
 

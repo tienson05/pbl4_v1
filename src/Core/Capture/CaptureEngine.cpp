@@ -6,7 +6,6 @@
 #include <QString>
 #include <QMetaObject>
 
-// --- (MỚI) Hằng số cho việc gom lô (Batching) ---
 const int LIVE_CAPTURE_TIMEOUT_MS = 100; // Gửi lô sau mỗi 100ms
 const int LIVE_BATCH_SIZE = 200;         // Hoặc khi đủ 200 gói
 const int FILE_READ_BATCH_SIZE = 1000;   // Gửi 1000 gói/lần khi đọc file
@@ -30,9 +29,7 @@ void CaptureEngine::setCaptureFilter(const QString &filter) {
     m_captureFilter = filter;
 }
 
-/**
- * @brief (ĐÃ SỬA) Lưu lại con trỏ luồng (m_captureThread)
- */
+
 void CaptureEngine::startCapture() {
     if (m_isRunning) stopCapture(); // Dừng luồng cũ nếu đang chạy
 
@@ -40,7 +37,6 @@ void CaptureEngine::startCapture() {
     m_isPaused = false;
     m_packetCounter = 0;
 
-    // (SỬA) Gán luồng mới vào biến thành viên
     m_captureThread = QThread::create([this]() {
         captureLoop(); // Hàm này sẽ chạy trên luồng mới
     });
@@ -48,9 +44,7 @@ void CaptureEngine::startCapture() {
     m_captureThread->start();
 }
 
-/**
- * @brief (ĐÃ SỬA) Chờ (wait) cho luồng cũ chết hẳn
- */
+
 void CaptureEngine::stopCapture() {
     m_isRunning = false; // Báo cho các vòng lặp dừng lại
 
@@ -59,7 +53,6 @@ void CaptureEngine::stopCapture() {
         pcap_breakloop(m_pcapHandle);
     }
 
-    // --- (SỬA LỖI CRASH) ---
     // Chờ cho luồng (thread) cũ kết thúc VÀ bị xóa
     if (m_captureThread && m_captureThread->isRunning()) {
         m_captureThread->quit(); // Yêu cầu thoát
@@ -188,7 +181,7 @@ void CaptureEngine::startCaptureFromFile(const QString &filePath)
     m_isPaused = false;
     m_packetCounter = 0;
 
-    // (SỬA) Gán luồng mới vào biến thành viên
+    // Gán luồng mới vào biến thành viên
     m_captureThread = QThread::create([this]() { fileReadingLoop(); });
     connect(m_captureThread, &QThread::finished, m_captureThread, &QObject::deleteLater);
     m_captureThread->start();

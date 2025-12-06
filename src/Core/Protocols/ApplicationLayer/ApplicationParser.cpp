@@ -2,10 +2,10 @@
 #include "HTTPParser.hpp"
 #include "DNSParser.hpp"
 #include <string>
-#include <sstream> // <-- THÊM MỚI
-#include <iomanip> // <-- THÊM MỚI
+#include <sstream>
+#include <iomanip>
+#include <cstring> // Cần cho memcpy
 
-// --- (THÊM MỚI) Hàm helper để chuyển đổi byte sang chuỗi Hex ---
 static std::string hexStr(const uint8_t* data, size_t len) {
     if (len == 0) return "";
     std::stringstream ss;
@@ -17,15 +17,46 @@ static std::string hexStr(const uint8_t* data, size_t len) {
 }
 // ---------------------------------------------------------
 
+// --- HÀM HELPER: Parse SSDP (Port 1900) ---
+static bool parseSSDP(const uint8_t* data, size_t len, std::string& infoOutput) {
+    if (len == 0) return false;
 
-/**
- * @brief (ĐÃ SỬA) Phân tích Tầng 7, phân biệt TCP/UDP và (CHỈ) đánh dấu QUIC
- */
+    // Chuyển data sang string để kiểm tra
+    std::string content(reinterpret_cast<const char*>(data), len);
+
+    // Kiểm tra các từ khóa đặc trưng của SSDP
+    if (content.find("HTTP/1.1") == std::string::npos &&
+        content.find("M-SEARCH") == std::string::npos &&
+        content.find("NOTIFY") == std::string::npos) {
+        return false;
+    }
+
+    // Lấy dòng đầu tiên làm Info
+    std::stringstream ss(content);
+    std::string firstLine;
+    if (std::getline(ss, firstLine)) {
+        if (!firstLine.empty() && firstLine.back() == '\r') {
+            firstLine.pop_back();
+        }
+        infoOutput = "SSDP " + firstLine;
+    } else {
+        infoOutput = "SSDP Data";
+    }
+    return true;
+}
+
 bool ApplicationParser::parse(ApplicationLayer& app, const uint8_t* data, size_t len,
                               uint16_t src_port, uint16_t dest_port, bool is_tcp)
 {
     // --- Quyết định dựa trên cổng (Port) ---
-
+    if ((src_port == 1900 || dest_port == 1900) && !is_tcp) {
+        std::string ssdpInfo;
+        if (parseSSDP(data, len, ssdpInfo)) {
+            app.protocol = "SSDP";
+            app.info = ssdpInfo;
+            return true;
+        }
+    }
     // 1. Kiểm tra HTTP (cổng 80)
     if (src_port == 80 || dest_port == 80) {
         if (is_tcp && len > 0) {
@@ -39,9 +70,19 @@ bool ApplicationParser::parse(ApplicationLayer& app, const uint8_t* data, size_t
             return DNSParser::parse(app, data, len);
         }
     }
+    if (src_port == 5353 || dest_port == 5353) {
+        if (!is_tcp) {
+            app.protocol = "MDNS"; // <--- QUAN TRỌNG: Gán tên TRƯỚC khi parse
 
-    // 3. (SỬA LỖI QUAN TRỌNG) Kiểm tra Cổng 443 (TLS và QUIC)
-    // 3. (SỬA LỖI QUAN TRỌNG) Kiểm tra Cổng 443 (TLS và QUIC)
+            if (DNSParser::parse(app, data, len)) {
+                return true; // Parse thành công, giữ nguyên protocol MDNS
+            }
+
+            app.protocol = ""; // Nếu parse thất bại thì reset lại
+        }
+    }
+
+    // 3. Kiểm tra Cổng 443 (TLS và QUIC)
     if (src_port == 443 || dest_port == 443) {
 
         // --- TRƯỜNG HỢP A: LÀ TCP ---
@@ -54,19 +95,13 @@ bool ApplicationParser::parse(ApplicationLayer& app, const uint8_t* data, size_t
             }
         }
         // --- TRƯỜNG HỢP B: LÀ UDP ---
-        // (Đây là bên trong khối 'if (src_port == 443 ...)')
         else { // (!is_tcp có nghĩa là UDP)
 
             if (len > 0) {
-                // (SỬA LỖI LOGIC)
-                // Chúng ta KHÔNG gán app.protocol ở đây.
-                // Chúng ta CHỈ gán app.quic_type.
 
-                // 1. Bit đầu tiên là 1 (Long Header)
                 // 1. Bit đầu tiên là 1 (Long Header)
                 if ((data[0] & 0x80) != 0) {
 
-                    // --- (BẮT ĐẦU SỬA LỖI) ---
                     // (Kiểm tra gói Version Negotiation y hệt Wireshark)
                     // Cần ít nhất 5 byte (1 byte header + 4 byte version)
                     if (len >= 5) {
@@ -81,11 +116,6 @@ bool ApplicationParser::parse(ApplicationLayer& app, const uint8_t* data, size_t
                             return false;
                         }
                     }
-                    // --- (KẾT THÚC SỬA LỖI) ---
-
-                    // (Nếu code chạy đến đây, nó KHÔNG PHẢI là Version Negotiation,
-                    //  chúng ta tiếp tục phân tích như cũ)
-
                     app.quic_type = ApplicationLayer::QUIC_LONG_HEADER;
 
                     // (Phân tích sâu để lấy Info)
@@ -106,7 +136,6 @@ bool ApplicationParser::parse(ApplicationLayer& app, const uint8_t* data, size_t
                     if (remaining < scid_len) return true;
                     std::string scid_str = hexStr(ptr, scid_len);
 
-                    // (Logic hiển thị Info của bạn giữ nguyên)
                     uint8_t type_bits = (data[0] & 0x30) >> 4;
                     switch (type_bits) {
                     case 0x00: app.info = "Initial"; break;
@@ -137,7 +166,6 @@ bool ApplicationParser::parse(ApplicationLayer& app, const uint8_t* data, size_t
     return false;
 }
 
-// (Hàm appendTreeView giữ nguyên)
 void ApplicationParser::appendTreeView(std::string& tree, int depth, const ApplicationLayer& app) {
     if (app.protocol == "HTTP") {
         HTTPParser::appendTreeView(tree, depth, app);

@@ -1,12 +1,12 @@
 #include "StatisticsDialog.hpp"
 #include "../../Controller/StatisticsManager.hpp"
 #include <QVBoxLayout>
-#include <QHBoxLayout> // <-- THÊM MỚI
+#include <QHBoxLayout>
 #include <QTabWidget>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QHeaderView>
-#include <QLabel> // <-- THÊM MỚI
+#include <QLabel>
 
 StatisticsDialog::StatisticsDialog(StatisticsManager* manager, QWidget *parent)
     : QDialog(parent),
@@ -26,7 +26,7 @@ void StatisticsDialog::setupUi()
 {
     QVBoxLayout* layout = new QVBoxLayout(this);
 
-    // --- 1. (MỚI) TẠO CÁC LABEL TIÊU ĐỀ ---
+    // --- 1. TẠO CÁC LABEL TIÊU ĐỀ ---
     QHBoxLayout* headerLayout = new QHBoxLayout();
     m_totalPacketsLabel = new QLabel("Total Packets: 0", this);
     m_totalTypesLabel = new QLabel("Total Protocol Types: 0", this);
@@ -85,7 +85,7 @@ void StatisticsDialog::onUpdateTimerTimeout()
     QMap<QString, qint64> dests = m_manager->getDestIpCounts();
     qint64 totalPackets = m_manager->getTotalPackets(); // <-- Lấy tổng số
 
-    // --- 2. (MỚI) CẬP NHẬT LABEL TIÊU ĐỀ ---
+    // --- 2.CẬP NHẬT LABEL TIÊU ĐỀ ---
     m_totalPacketsLabel->setText("Total Packets: " + QString::number(totalPackets));
     m_totalTypesLabel->setText("Total Protocol Types: " + QString::number(protocols.size()));
     // ------------------------------------
@@ -96,9 +96,7 @@ void StatisticsDialog::onUpdateTimerTimeout()
     populateTree(m_destTree, dests, false, 0);  // (Không cần totalPackets)
 }
 
-/**
- * @brief (ĐÃ CẬP NHẬT) Chấp nhận 'totalPackets'
- */
+
 void StatisticsDialog::populateTree(QTreeWidget* tree,
                                     const QMap<QString, qint64>& data,
                                     bool showPercent,
@@ -109,7 +107,6 @@ void StatisticsDialog::populateTree(QTreeWidget* tree,
 
     tree->clear();
 
-    // (KHÔNG CẦN TÍNH LẠI TỔNG SỐ Ở ĐÂY NỮA)
     if (totalPackets == 0 && showPercent) totalPackets = 1; // Tránh chia cho 0
 
     QList<QTreeWidgetItem*> items;

@@ -1,6 +1,6 @@
 #include "ICMPParser.hpp"
-#include <netinet/ip_icmp.h> // Cần cho struct icmphdr
-#include <arpa/inet.h>       // Cần cho ntohs
+#include <netinet/ip_icmp.h>
+#include <arpa/inet.h>
 #include <sstream>
 #include <iomanip>
 
@@ -17,11 +17,6 @@ static std::string to_hex(T val) {
     ss << "0x" << std::hex << std::setw(4) << std::setfill('0') << val;
     return ss.str();
 }
-
-/**
- * @brief (ĐÃ SỬA) Hàm static công khai
- * Trả về mô tả của ICMP type.
- */
 std::string ICMPParser::getTypeString(uint8_t type) {
     switch (type) {
     case 0:  return "Echo Reply";
@@ -29,6 +24,17 @@ std::string ICMPParser::getTypeString(uint8_t type) {
     case 5:  return "Redirect";
     case 8:  return "Echo (ping) Request";
     case 11: return "Time Exceeded";
+        // --- ICMPv6 (Neighbor Discovery Protocol) ---
+    case 128: return "Echo Request (IPv6)";
+    case 129: return "Echo Reply (IPv6)";
+    case 133: return "Router Solicitation";
+
+    // ĐÂY LÀ CÁI BẠN ĐANG THIẾU (Type 134)
+    case 134: return "Router Advertisement";
+
+    case 135: return "Neighbor Solicitation";
+    case 136: return "Neighbor Advertisement";
+
     default: return "Unknown Type";
     }
 }
@@ -37,7 +43,6 @@ std::string ICMPParser::getTypeString(uint8_t type) {
 
 bool ICMPParser::parse(ICMPHeader& icmp, const uint8_t* data, size_t len) {
 
-    // (SỬA) ICMP Echo/Reply (ping) cần ít nhất 8 byte
     // Các loại khác (ví dụ: Destination Unreachable) cần ít nhất 4 byte
     if (len < 4) {
         return false;
@@ -51,7 +56,6 @@ bool ICMPParser::parse(ICMPHeader& icmp, const uint8_t* data, size_t len) {
     icmp.code     = icmp_hdr->code;
     icmp.checksum = ntohs(icmp_hdr->checksum);
 
-    // (SỬA) Chỉ đọc ID/Sequence nếu đủ 8 byte VÀ type là Echo/Reply
     if ((icmp.type == ICMP_ECHO || icmp.type == ICMP_ECHOREPLY) && len >= 8) {
         icmp.id       = ntohs(icmp_hdr->un.echo.id);
         icmp.sequence = ntohs(icmp_hdr->un.echo.sequence);
@@ -67,7 +71,6 @@ void ICMPParser::appendTreeView(std::string& tree, int depth, const ICMPHeader& 
     appendTree(tree, depth, "Internet Control Message Protocol");
     depth++;
 
-    // (SỬA) Gọi hàm static getTypeString
     appendTree(tree, depth, "Type: " + std::to_string(icmp.type) + " (" + getTypeString(icmp.type) + ")");
     appendTree(tree, depth, "Code: " + std::to_string(icmp.code));
     appendTree(tree, depth, "Checksum: " + to_hex(icmp.checksum));

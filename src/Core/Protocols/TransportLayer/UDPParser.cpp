@@ -1,6 +1,6 @@
 #include "UDPParser.hpp"
-#include <netinet/udp.h>    // Cần cho struct udphdr
-#include <arpa/inet.h>      // Cần cho ntohs()
+#include <netinet/udp.h>
+#include <arpa/inet.h>
 #include <sstream>
 #include <iomanip>
 
