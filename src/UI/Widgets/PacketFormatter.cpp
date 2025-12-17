@@ -265,23 +265,96 @@ QString PacketFormatter::getDest(const PacketData& p) {
 }
 
 QString PacketFormatter::getInfo(const PacketData& p) {
-    if (!p.app.info.empty()) return QString::fromStdString(p.app.info);
-    if (p.app.is_http_request) return QString::fromStdString(p.app.http_method + " " + p.app.http_path);
-    if (p.app.is_http_response) return QString("HTTP %1").arg(p.app.http_status_code);
+    if (!p.app.info.empty()) {
+        return QString::fromStdString(p.app.info);
+    }
+
+    if (p.app.is_http_request) {
+        return QString::fromStdString(p.app.http_method + " " + p.app.http_path);
+    }
+    if (p.app.is_http_response) {
+        return QString("HTTP %1").arg(p.app.http_status_code);
+    }
+    if (p.is_udp && p.app.protocol == "DNS") {
+        return p.app.is_dns_query ? "DNS Query" : "DNS Response";
+    }
 
     if (p.is_tcp) {
-        QString info = QString("%1 -> %2 Seq=%3 Ack=%4 Win=%5")
-        .arg(p.tcp.src_port).arg(p.tcp.dest_port)
-            .arg(p.tcp.seq_num).arg(p.tcp.ack_num).arg(p.tcp.window);
-        // Có thể thêm Flags vào đây nếu muốn
+        QString info = QString("%1 → %2 ")
+                           .arg(p.tcp.src_port)
+                           .arg(p.tcp.dest_port);
+        QString f;
+        if (p.tcp.flags & TCPHeader::SYN) f += "SYN, ";
+        if (p.tcp.flags & TCPHeader::ACK) f += "ACK, ";
+        if (p.tcp.flags & TCPHeader::FIN) f += "FIN, ";
+        if (p.tcp.flags & TCPHeader::RST) f += "RST, ";
+        if (p.tcp.flags & TCPHeader::PSH) f += "PSH, ";
+        if (!f.isEmpty()) {
+            f.chop(2);
+            info += QString("[%1] ").arg(f);
+        }
+        info += QString("Seq=%1 Ack=%2 Win=%3")
+                    .arg(p.tcp.seq_num)
+                    .arg(p.tcp.ack_num)
+                    .arg(p.tcp.window);
+
+        int payload_len = 0;
+        if (p.is_ipv4) {
+            int ip_total_len = p.ipv4.total_length;
+            int ip_header_len = p.ipv4.ihl * 4;
+            int tcp_header_len = p.tcp.data_offset * 4;
+            payload_len = ip_total_len - ip_header_len - tcp_header_len;
+        }
+
+        info += QString(" Len=%1").arg(payload_len);
+
+        if (p.tcp.has_timestamp) {
+            info += QString(" TSval=%1 TSecr=%2")
+            .arg(p.tcp.ts_val)
+                .arg(p.tcp.ts_ecr);
+        }
+
         return info;
     }
-    if (p.is_udp) return QString("%1 -> %2 Len=%3").arg(p.udp.src_port).arg(p.udp.dest_port).arg(p.udp.length);
-    if (p.is_arp) return (p.arp.opcode == 1) ? "Who has?" : "Is at";
-    if (p.is_icmp) return QString::fromStdString(ICMPParser::getTypeString(p.icmp.type));
+    if (p.is_udp) {
+        return QString("%1 → %2 Len=%3")
+            .arg(p.udp.src_port)
+            .arg(p.udp.dest_port)
+            .arg(p.udp.length - 8);
+    }
+
+    if (p.is_arp) {
+        if (p.arp.opcode == 1) { // Request
+            return QString("Who has %1? Tell %2")
+                .arg(ipToString(p.arp.target_ip))
+                .arg(ipToString(p.arp.sender_ip));
+        } else { // Reply
+            return QString("%1 is at %2")
+                .arg(ipToString(p.arp.sender_ip))
+                .arg(macToString(p.arp.sender_mac));
+        }
+    }
+    if (p.is_icmp) {
+        // (Sử dụng hàm static mới từ ICMPParser)
+        QString info = QString::fromStdString(ICMPParser::getTypeString(p.icmp.type));
+
+        // (Thêm 'request' hoặc 'reply' cho ping)
+        if (p.icmp.type == 8) info += " (ping) request";
+        if (p.icmp.type == 0) info += " (ping) reply";
+
+        // (Thêm id và seq, LẤY TTL TỪ IPV4)
+        if ((p.icmp.type == 0 || p.icmp.type == 8) && p.is_ipv4) {
+            info += QString(", id=0x%1, seq=%2, ttl=%3")
+            .arg(p.icmp.id, 4, 16, QChar('0'))
+                .arg(p.icmp.sequence)
+                .arg(p.ipv4.ttl); // Lấy TTL từ IP header
+        }
+        return info;
+    }
 
     return QString("Len=%1").arg(p.cap_length);
 }
+
 
 // === INTERNAL HELPERS ===
 

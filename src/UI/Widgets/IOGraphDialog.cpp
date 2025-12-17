@@ -18,10 +18,12 @@ void IOGraphDialog::setupUi()
 {
     // 1. Setup Chart
     m_series = new QLineSeries();
+    m_series->setPointsVisible(true);
+    m_series->setPointLabelsVisible(false);
     m_chart = new QChart();
     m_chart->addSeries(m_series);
     m_chart->setTitle("Network Traffic");
-    m_chart->legend()->hide();
+    m_chart->legend()->hide();m_series->setPointsVisible(true);
 
     m_axisX = new QValueAxis();
     m_axisX->setTitleText("Time (s)");
@@ -74,27 +76,57 @@ void IOGraphDialog::updateGraph()
 {
     if (!m_statsManager) return;
 
-    int interval = m_comboInterval->currentData().toInt();
+    // Lấy interval (ms) từ combobox
+    int intervalMs = m_comboInterval->currentData().toInt();
     bool modeBytes = m_comboUnit->currentData().toInt() == 1;
 
-    // Tính toán lại
-    QVector<QPointF> data = m_statsManager->calculateIOGraphData(m_packets, interval, modeBytes);
+    // Tính toán dữ liệu (Giả sử hàm này trả về X là giây: 0.1, 0.2, 1, 2, 60...)
+    QVector<QPointF> data = m_statsManager->calculateIOGraphData(m_packets, intervalMs, modeBytes);
+
+    if (intervalMs < 1000) {
+        // Nếu nhỏ hơn 1 giây (ví dụ 0.1s), cần hiển thị số lẻ
+        m_axisX->setTitleText("Time (s)");
+        m_axisX->setLabelFormat("%.1f"); // Hiển thị 1 số sau dấu phẩy (0.1, 0.2)
+    }
+    else if (intervalMs >= 60000) {
+
+        m_axisX->setTitleText("Time (s)");
+        m_axisX->setLabelFormat("%.0f");
+
+
+    }
+    else {
+        // Mặc định (1s, 10s)
+        m_axisX->setTitleText("Time (s)");
+        m_axisX->setLabelFormat("%.0f"); // Số nguyên (1, 2, 3...)
+    }
+    // ---------------------------------------------
 
     // Cập nhật biểu đồ
     m_series->replace(data);
 
     // Cập nhật tiêu đề trục Y
     m_axisY->setTitleText(modeBytes ? "Bytes" : "Packets");
+
+    // Xử lý hiển thị số trục Y cho đẹp (nếu số quá lớn dùng k/M/G)
+    // Ở đây dùng đơn giản %.0f
     m_axisY->setLabelFormat("%.0f");
 
-    // Rescale trục
+    // Rescale trục (Zoom fit)
     if (!data.isEmpty()) {
-        m_axisX->setRange(data.first().x(), data.last().x());
+        double minX = data.first().x();
+        double maxX = data.last().x();
+
+        // Fix lỗi nếu chỉ có 1 điểm hoặc min=max
+        if (maxX <= minX) maxX = minX + (intervalMs / 1000.0) * 10;
+
+        m_axisX->setRange(minX, maxX);
 
         double maxY = 0;
         for(const auto& p : data) if(p.y() > maxY) maxY = p.y();
-        if (maxY == 0) maxY = 10;
-        m_axisY->setRange(0, maxY * 1.1); // Thêm 10% khoảng trống bên trên
+
+        if (maxY == 0) maxY = 10; // Tránh biểu đồ bẹp dí nếu không có data
+        m_axisY->setRange(0, maxY * 1.1);
     }
 }
 void IOGraphDialog::appendPackets(const QList<PacketData>& newPackets)
