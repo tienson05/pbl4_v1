@@ -6,7 +6,7 @@
 #include <QColor>
 #include <sstream>
 #include <iomanip>
-#include <ctime> // <--- THÊM ĐỂ DÙNG struct timespec
+#include <ctime>
 #include "../../Common/PacketData.hpp"
 
 class PacketFormatter {
@@ -14,9 +14,7 @@ public:
     static void populateTree(QTreeWidget* tree, const PacketData& packet);
     static void displayHexDump(QTextEdit* textEdit, const PacketData& packet, int hl_offset = -1, int hl_len = 0);
 
-    // --- SỬA DÒNG NÀY ---
-    // Cũ: static QString formatTime(const struct timeval& ts);
-    // Mới:
+
     static QString formatTime(const struct timespec& ts);
 
     static QString getProtocolName(const PacketData& p);
