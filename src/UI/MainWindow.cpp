@@ -86,7 +86,6 @@ void MainWindow::showCapturePage() {
 void MainWindow::addPacketsToTable(QList<PacketData>* packets)
 {
     if (capturePage) {
-        // (SỬA LỖI) Gọi đúng tên hàm của PacketTable
         capturePage->packetTable->onPacketsReceived(packets);
     } else {
         // Nếu trang không hiển thị, phải xóa con trỏ để tránh rò rỉ
@@ -135,11 +134,9 @@ void MainWindow::onCloseRequested() {
 void MainWindow::updateInterfaceLabel(const QString &name, const QString &filter)
 {
     if (capturePage) {
-        // Gọi hàm vừa sửa ở Bước 2
         capturePage->setInterfaceName(name, filter);
     }
 }
-// Thêm hàm này vào cuối file hoặc chỗ các Slot
 void MainWindow::applyStreamFilter(const QString &filterText)
 {
     // 1. Cập nhật giao diện (Điền text vào ô tìm kiếm bên trong CapturePage)

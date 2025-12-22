@@ -79,7 +79,7 @@ bool DisplayFilterEngine::matchSingleCondition(const PacketData& packet, const Q
 
     // 4. Gọi hàm kiểm tra tương ứng
 
-    // --- (MỚI) HỖ TRỢ LỌC STREAM ---
+    //  HỖ TRỢ LỌC STREAM ---
     if (key == "stream") {
         // Nếu gói tin không thuộc luồng nào (stream_index = -1) -> Không bao giờ khớp
         if (packet.stream_index < 0) return false;

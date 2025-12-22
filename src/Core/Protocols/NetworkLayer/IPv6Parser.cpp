@@ -1,9 +1,8 @@
 #include "IPv6Parser.hpp"
-#include <netinet/ip6.h>    // Cần cho struct ip6_hdr và các extension
-#include <arpa/inet.h>      // Cần cho inet_ntop, ntohs, ntohl
-#include <cstring>          // Cần cho memcpy
-#include <string>           // Cần cho std::to_string
-
+#include <netinet/ip6.h>
+#include <arpa/inet.h>
+#include <cstring>
+#include <string>
 // --- Các hàm trợ giúp nội bộ ---
 
 static void appendTree(std::string& tree, int depth, const std::string& line) {

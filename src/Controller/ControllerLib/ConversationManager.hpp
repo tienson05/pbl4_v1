@@ -2,30 +2,39 @@
 #define CONVERSATIONMANAGER_HPP
 
 #include <QObject>
-#include <QHash>      // Thay QMap bằng QHash cho tốc độ O(1)
-#include <QDateTime>  // Để theo dõi thời gian luồng
+#include <QHash>
+#include <QDateTime>
+#include <array>
 #include "../../Common/PacketData.hpp"
 
 /**
- * @brief Định danh một luồng (5-tuple)
- * Dùng làm Key trong bảng băm (Hash Table)
+ * @brief Định danh luồng hỗ trợ cả IPv4 và IPv6
  */
 struct StreamID {
-    quint32 ip1 = 0;
-    quint32 ip2 = 0;
+    // Dùng mảng 16 byte để chứa IP (IPv4 sẽ dùng 4 byte đầu hoặc map sang v6)
+    std::array<uint8_t, 16> ip1{};
+    std::array<uint8_t, 16> ip2{};
     quint16 port1 = 0;
     quint16 port2 = 0;
-    quint8 protocol = 0; // 6 (TCP) hoặc 17 (UDP)
+    quint8 protocol = 0;
+    bool is_ipv6 = false; // Cờ đánh dấu
 
-    // 1. Toán tử so sánh bằng (Bắt buộc cho QHash)
+    // Toán tử so sánh bằng (Bắt buộc cho QHash)
     bool operator==(const StreamID& other) const {
         return ip1 == other.ip1 && ip2 == other.ip2 &&
                port1 == other.port1 && port2 == other.port2 &&
-               protocol == other.protocol;
+               protocol == other.protocol && is_ipv6 == other.is_ipv6;
     }
 };
 
-// 2. Hàm băm toàn cục (Bắt buộc cho QHash)
+// Hàm băm (Hash function) cho mảng 16 byte
+inline size_t qHash(const std::array<uint8_t, 16>& key, size_t seed = 0) {
+    // Hash đơn giản bằng cách XOR các khối 4 byte
+    const uint32_t* p = reinterpret_cast<const uint32_t*>(key.data());
+    return seed ^ p[0] ^ p[1] ^ p[2] ^ p[3];
+}
+
+// Hàm băm chính cho StreamID
 inline size_t qHash(const StreamID& key, size_t seed = 0) {
     return qHash(key.ip1, seed) ^ qHash(key.ip2, seed) ^
            qHash(key.port1, seed) ^ qHash(key.port2, seed) ^
@@ -33,17 +42,29 @@ inline size_t qHash(const StreamID& key, size_t seed = 0) {
 }
 
 /**
- * @brief Lưu trữ trạng thái và thống kê của một luồng
+ * @brief Trạng thái luồng (Thêm TCP)
  */
 struct StreamState {
-    quint64 stream_index = 0;      // ID hiển thị (VD: Stream #1, Stream #2...)
-    quint64 packet_count = 0;      // Số lượng gói tin trong luồng
-    QDateTime start_time;          // Thời gian bắt đầu
-    QDateTime last_activity;       // Thời gian gói tin cuối cùng
+    quint64 stream_index = 0;
+    quint64 packet_count = 0;
+    QDateTime start_time;
+    QDateTime last_activity;
 
-    // --- Trạng thái giao thức ---
-    bool is_quic_confirmed = false; // Đã xác nhận chắc chắn là QUIC (thấy Long Header)
-    // bool is_tcp_established = false; // (Dành cho mở rộng TCP sau này)
+    // --- QUIC State ---
+    bool is_quic_confirmed = false;
+
+    // --- TCP State ---
+    enum TcpState {
+        NONE,
+        SYN_SENT,
+        SYN_RCVD,
+        ESTABLISHED,
+        FIN_WAIT,
+        CLOSED
+    };
+    TcpState tcp_state = NONE;
+    bool saw_syn = false;      // Đã thấy gói SYN?
+    bool saw_syn_ack = false;  // Đã thấy gói SYN-ACK?
 };
 
 class ConversationManager : public QObject
@@ -52,23 +73,17 @@ class ConversationManager : public QObject
 public:
     explicit ConversationManager(QObject *parent = nullptr);
 
-    // Xử lý một danh sách gói tin (Bỏ const để có thể sửa packet bên trong)
     void processPackets(QList<PacketData>& packetBatch);
-
-    // Xử lý và cập nhật thông tin cho 1 gói tin cụ thể
     void processPacket(PacketData& packet);
-
-    // Xóa dữ liệu (khi Clear hoặc Stop)
     void clear();
 
 private:
-    // Tạo ID chuẩn hóa (IP nhỏ đứng trước)
     StreamID getStreamID(const PacketData& packet);
 
-    // Bảng băm lưu trạng thái (Dùng QHash thay vì QMap)
-    QHash<StreamID, StreamState> m_streams;
+    // Hàm phụ trợ để copy IPv4 vào mảng 16 byte
+    std::array<uint8_t, 16> ipToBytes(uint32_t ipv4);
 
-    // Bộ đếm để cấp phát ID luồng (0, 1, 2...)
+    QHash<StreamID, StreamState> m_streams;
     quint64 m_global_stream_counter = 0;
 };
 

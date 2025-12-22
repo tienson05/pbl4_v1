@@ -8,7 +8,6 @@
 #include <QMessageBox>
 #include "Header/AnalyzeMenu.hpp"
 
-// Khai báo trước
 class HeaderWidget;
 class WelcomePage;
 class CapturePage;
@@ -27,19 +26,19 @@ public slots:
     // --- CÁC SLOT CÔNG KHAI (để AppController kết nối) ---
 
     /**
-     * @brief (ĐÃ THAY ĐỔI) Slot nhận tín hiệu "lô" (batch) từ AppController
+     * @brief Slot nhận tín hiệu "lô" (batch) từ AppController
      * và chuyển tiếp "lô" đó xuống PacketTable.
      */
     void addPacketsToTable(QList<PacketData>* packets);
 
     /**
-     * @brief (Giữ nguyên) Slot nhận tín hiệu từ AppController
+     * @brief Slot nhận tín hiệu từ AppController
      * và yêu cầu PacketTable tự xóa sạch.
      */
     void clearPacketTable();
 
     /**
-     * @brief (Giữ nguyên) Slot này nhận tín hiệu lỗi cú pháp
+     * @brief Slot này nhận tín hiệu lỗi cú pháp
      * từ AppController và hiển thị một QMessageBox.
      */
     void showFilterError(const QString &errorText);
@@ -64,9 +63,9 @@ signals:
     void onRestartCaptureClicked();
     void onStopCaptureClicked();
     void onPauseCaptureClicked();
-    void onApplyFilterClicked(const QString &filterText); // <-- Filter hiển thị
-    void analyzeStatisticsRequested(); // <-- THÊM CÁI NÀY
-    void analyzeIOGraphRequested(); // <-- THÊM MỚI
+    void onApplyFilterClicked(const QString &filterText);
+    void analyzeStatisticsRequested();
+    void analyzeIOGraphRequested();
 private:
     HeaderWidget *header;
     QStackedWidget *stack;

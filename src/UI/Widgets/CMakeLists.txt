@@ -4,6 +4,7 @@ add_library(WidgetsLib STATIC
     PacketTable.hpp
     StatisticsDialog.hpp StatisticsDialog.cpp
     IOGraphDialog.hpp IOGraphDialog.cpp
+    PacketFormatter.hpp PacketFormatter.cpp
 )
 
 # Cho phép các module khác include file header trong UI/

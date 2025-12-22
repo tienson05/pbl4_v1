@@ -5,11 +5,11 @@
 #include <QMutex>
 #include "../UI/MainWindow.hpp"
 #include "../Core/Capture/CaptureEngine.hpp"
-#include "ControllerLib/DisplayFilterEngine.hpp" // Include engine mới
+#include "ControllerLib/DisplayFilterEngine.hpp"
 #include "StatisticsManager.hpp"
 #include "ControllerLib/ConversationManager.hpp"
 #include "../Widgets/StatisticsDialog.hpp"
-#include "../Widgets/IOGraphDialog.hpp" // <-- THÊM INCLUDE
+#include "../Widgets/IOGraphDialog.hpp"
 
 
 class AppController : public QObject
@@ -60,7 +60,7 @@ private:
     QList<PacketData> m_allPackets;
     QMutex m_allPacketsMutex;
 
-    // (THÊM DÒNG NÀY) Lưu trữ từ khóa lọc hiện tại (ví dụ: "http")
+    //Lưu trữ từ khóa lọc hiện tại (ví dụ: "http")
     QString m_currentFilterText;
 };
 

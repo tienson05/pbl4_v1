@@ -121,8 +121,6 @@ void AppController::onSaveFileRequested()
         return;
     }
 
-    // ... (Code pcap_dumper của bạn giữ nguyên,
-    //      NHƯNG lặp 'packetsToSave' thay vì 'm_allPackets')
     pcap_t *pcap_handle = pcap_open_dead(DLT_EN10MB, 65535);
     pcap_dumper_t *dumper = pcap_dump_open(pcap_handle, filePath.toStdString().c_str());
 
@@ -145,7 +143,7 @@ void AppController::onRestartCaptureClicked()
 {
     qDebug() << "Restart capture";
 
-    { // <-- (SỬA) Khóa (lock) m_allPackets
+    { // Khóa (lock) m_allPackets
         QMutexLocker locker(&m_allPacketsMutex);
         m_allPackets.clear();
     }

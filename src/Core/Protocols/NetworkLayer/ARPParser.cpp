@@ -1,8 +1,8 @@
 #include "ARPParser.hpp"
-#include <arpa/inet.h>      // Cho ntohs(), ntohl(), htonl()
-#include <netinet/if_ether.h> // Cho struct ether_arp
-#include <cstring>          // Cho memcpy
-#include <sstream>          // Dùng để tạo chuỗi
+#include <arpa/inet.h>
+#include <netinet/if_ether.h>
+#include <cstring>
+#include <sstream>
 #include <iomanip>
 
 // --- Các hàm trợ giúp nội bộ ---

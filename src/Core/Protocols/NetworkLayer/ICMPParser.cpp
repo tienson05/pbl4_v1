@@ -1,6 +1,6 @@
 #include "ICMPParser.hpp"
-#include <netinet/ip_icmp.h> // Cần cho struct icmphdr
-#include <arpa/inet.h>       // Cần cho ntohs
+#include <netinet/ip_icmp.h>
+#include <arpa/inet.h>
 #include <sstream>
 #include <iomanip>
 
@@ -24,6 +24,17 @@ std::string ICMPParser::getTypeString(uint8_t type) {
     case 5:  return "Redirect";
     case 8:  return "Echo (ping) Request";
     case 11: return "Time Exceeded";
+        // --- ICMPv6 (Neighbor Discovery Protocol) ---
+    case 128: return "Echo Request (IPv6)";
+    case 129: return "Echo Reply (IPv6)";
+    case 133: return "Router Solicitation";
+
+    // ĐÂY LÀ CÁI BẠN ĐANG THIẾU (Type 134)
+    case 134: return "Router Advertisement";
+
+    case 135: return "Neighbor Solicitation";
+    case 136: return "Neighbor Advertisement";
+
     default: return "Unknown Type";
     }
 }

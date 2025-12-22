@@ -5,9 +5,8 @@
 #include <QMap>
 #include <QString>
 #include <QTimer>
-#include <QLabel> // <-- THÊM MỚI
+#include <QLabel>
 
-// (Khai báo trước)
 class QTabWidget;
 class QTreeWidget;
 class StatisticsManager;
@@ -29,15 +28,14 @@ private:
     void setupUi();
     QTreeWidget* createTreeWidget(const QStringList& headers);
 
-    // (THAY ĐỔI) Thêm totalPackets vào chữ ký hàm
     void populateTree(QTreeWidget* tree,
                       const QMap<QString, qint64>& data,
                       bool showPercent,
-                      qint64 totalPackets); // <-- THÊM MỚI
+                      qint64 totalPackets);
 
     // --- BIẾN UI ---
-    QLabel* m_totalPacketsLabel; // <-- THÊM MỚI
-    QLabel* m_totalTypesLabel;   // <-- THÊM MỚI
+    QLabel* m_totalPacketsLabel;
+    QLabel* m_totalTypesLabel;
     QTabWidget* m_tabWidget;
     QTreeWidget* m_protocolTree;
     QTreeWidget* m_sourceTree;

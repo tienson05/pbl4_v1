@@ -181,7 +181,7 @@ void CaptureEngine::startCaptureFromFile(const QString &filePath)
     m_isPaused = false;
     m_packetCounter = 0;
 
-    // (SỬA) Gán luồng mới vào biến thành viên
+    // Gán luồng mới vào biến thành viên
     m_captureThread = QThread::create([this]() { fileReadingLoop(); });
     connect(m_captureThread, &QThread::finished, m_captureThread, &QObject::deleteLater);
     m_captureThread->start();

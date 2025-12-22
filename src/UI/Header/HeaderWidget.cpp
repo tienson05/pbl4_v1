@@ -1,6 +1,5 @@
 #include "HeaderWidget.hpp"
 #include "FileMenu.hpp"
-#include "CaptureMenu.hpp"
 #include "AnalyzeMenu.hpp"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -49,7 +48,6 @@ void HeaderWidget::setupMenuBar(QWidget *parent, QVBoxLayout *mainLayout)
     menuLayout->setContentsMargins(10, 0, 0, 0);
 
     auto *fileMenu = new FileMenu(menuBar);
-    auto *captureMenu = new CaptureMenu(menuBar);
     auto *analyzeMenu = new AnalyzeMenu(menuBar);
 
     // --- File Menu Connections ---
@@ -58,7 +56,6 @@ void HeaderWidget::setupMenuBar(QWidget *parent, QVBoxLayout *mainLayout)
     connect(fileMenu, &FileMenu::closeRequested, this, &HeaderWidget::closeRequested);
 
     // --- Capture Menu Connections ---
-    connect(captureMenu, &CaptureMenu::captureStartRequested, this, &HeaderWidget::captureStartRequested);
 
     // --- Analyze Menu Connections ---
     connect(analyzeMenu, &AnalyzeMenu::analyzeFlowRequested, this, &HeaderWidget::analyzeFlowRequested);
@@ -68,7 +65,6 @@ void HeaderWidget::setupMenuBar(QWidget *parent, QVBoxLayout *mainLayout)
     connect(analyzeMenu, &AnalyzeMenu::analyzeIOGraphRequested, this, &HeaderWidget::analyzeIOGraphRequested);
 
     menuLayout->addWidget(fileMenu);
-    menuLayout->addWidget(captureMenu);
     menuLayout->addWidget(analyzeMenu);
     menuLayout->addStretch();
 

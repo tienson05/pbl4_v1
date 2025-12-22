@@ -3,7 +3,7 @@
 #include <QObject>
 #include <QTimer>
 #include <QString>
-#include <QThread> // <-- THÊM MỚI
+#include <QThread>
 #include <pcap.h>
 #include "../../Common/PacketData.hpp"
 
