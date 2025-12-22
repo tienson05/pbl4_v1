@@ -13,7 +13,6 @@ signals:
 
     void openFileRequested();
     void saveFileRequested();
-    void captureStartRequested();
     void analyzeFlowRequested();
     void analyzeStatisticsRequested();
     void analyzeIOGraphRequested();

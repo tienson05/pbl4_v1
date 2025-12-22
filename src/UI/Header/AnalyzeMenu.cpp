@@ -10,12 +10,11 @@ AnalyzeMenu::AnalyzeMenu(QWidget *parent)
     menu->setStyleSheet("QMenu { background-color: white; border: 1px solid #D5D8DC; } "
                         "QMenu::item:selected { background-color: #4A90E2; color: white; }");
 
-    QAction *flowAct = menu->addAction("Packet Flow");
+
     QAction *statsAct = menu->addAction("Statistics");
 QAction *ioGraphAct = menu->addAction("I/O Graph");
     setMenu(menu);
 
-    connect(flowAct, &QAction::triggered, this, &AnalyzeMenu::analyzeFlowRequested);
     connect(statsAct, &QAction::triggered, this, &AnalyzeMenu::analyzeStatisticsRequested);
 connect(ioGraphAct, &QAction::triggered, this, &AnalyzeMenu::analyzeIOGraphRequested);
 }

@@ -3,8 +3,8 @@ add_library(HeaderLib STATIC
     HeaderWidget.hpp
     FileMenu.cpp
     FileMenu.hpp
-    CaptureMenu.cpp
-    CaptureMenu.hpp
+
+
     AnalyzeMenu.cpp
     AnalyzeMenu.hpp
 )
